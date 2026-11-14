@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.routers.assets import router as assets_router
+
 app = FastAPI(
     title="NEXUS CloudSecOps API",
     description="Cloud security operations platform API.",
@@ -18,10 +20,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(assets_router)
+
+
 class HealthResponse(BaseModel):
     status: str
     service: str
     timestamp: datetime
+
 
 class OverviewResponse(BaseModel):
     assets_monitored: int
@@ -30,6 +36,7 @@ class OverviewResponse(BaseModel):
     compliance_score: int
     threat_level: str
 
+
 @app.get("/api/health", response_model=HealthResponse, tags=["System"])
 def health() -> HealthResponse:
     return HealthResponse(
@@ -37,6 +44,7 @@ def health() -> HealthResponse:
         service="nexus-api",
         timestamp=datetime.now(timezone.utc),
     )
+
 
 @app.get("/api/v1/overview", response_model=OverviewResponse, tags=["Overview"])
 def overview() -> OverviewResponse:
