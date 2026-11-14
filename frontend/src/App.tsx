@@ -35,7 +35,8 @@ function App() {
   const [apiState, setApiState] = useState("Connecting");
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/overview")
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    fetch(`${apiBaseUrl}/api/v1/overview`)
       .then((r) => { if (!r.ok) throw new Error("API unavailable"); return r.json(); })
       .then((data: Overview) => { setOverview(data); setApiState("Connected"); })
       .catch(() => setApiState("Demo mode"));
