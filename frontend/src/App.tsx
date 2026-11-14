@@ -15,6 +15,8 @@ type Vulnerability = { id: string; cve: string; title: string; severity: string;
 
 type ThreatDetection = { id: string; rule_id: string; title: string; description: string; severity: string; asset_id: string; asset_name: string; event_type: string; source: string; status: string; detected_at: string; evidence: string; };
 
+type Incident = { id: string; title: string; description: string; severity: string; asset_id: string; asset_name: string; assigned_to: string; status: string; response_notes: string; created_at: string; updated_at: string; };
+
 type Overview = {
   assets_monitored: number;
   critical_findings: number;
@@ -40,6 +42,19 @@ const findings = [
 
 function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [incidentLoading, setIncidentLoading] = useState(false);
+  const [incidentError, setIncidentError] = useState("");
+  const [incidentSearch, setIncidentSearch] = useState("");
+  const [incidentRefresh, setIncidentRefresh] = useState(0);
+  const [incidentTitle, setIncidentTitle] = useState("");
+  const [incidentDescription, setIncidentDescription] = useState("");
+  const [incidentSeverity, setIncidentSeverity] = useState("High");
+  const [incidentAssetId, setIncidentAssetId] = useState("NX-ASSET-001");
+  const [incidentAssetName, setIncidentAssetName] = useState("prod-customer-data");
+  const [incidentAssignee, setIncidentAssignee] = useState("Security Analyst");
+  const [incidentSaving, setIncidentSaving] = useState(false);
+
   const [active, setActive] = useState("Overview");
   const [apiState, setApiState] = useState("Connecting");
   const [assets, setAssets] = useState<CloudAsset[]>([]);
@@ -107,6 +122,63 @@ function App() {
       .finally(() => { if (!cancelled) setThreatLoading(false); });
     return () => { cancelled = true; };
   }, [active, threatRefresh]);
+
+
+  useEffect(() => {
+    if (active !== "Incident response") return;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    let cancelled = false;
+    setIncidentLoading(true);
+    setIncidentError("");
+    fetch(`${apiBaseUrl}/api/v1/incidents`)
+      .then((response) => { if (!response.ok) throw new Error(`Incident request failed (${response.status})`); return response.json(); })
+      .then((data: Incident[]) => { if (!Array.isArray(data)) throw new Error("Unexpected incident response"); if (!cancelled) setIncidents(data); })
+      .catch((error: Error) => { if (!cancelled) setIncidentError(error.message || "Unable to load incidents"); })
+      .finally(() => { if (!cancelled) setIncidentLoading(false); });
+    return () => { cancelled = true; };
+  }, [active, incidentRefresh]);
+
+  const updateIncident = async (id: string, updates: Partial<Incident>) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/incidents/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+      if (!response.ok) throw new Error(`Update failed (${response.status})`);
+      const updated: Incident = await response.json();
+      setIncidents(current => current.map(item => item.id === id ? updated : item));
+    } catch (error) {
+      setIncidentError(error instanceof Error ? error.message : "Unable to update incident");
+    }
+  };
+
+  const createIncident = async () => {
+    if (incidentTitle.trim().length < 5 || incidentDescription.trim().length < 10) {
+      setIncidentError("Enter a title (at least 5 characters) and description (at least 10 characters).");
+      return;
+    }
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    setIncidentSaving(true);
+    setIncidentError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/incidents`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: incidentTitle, description: incidentDescription, severity: incidentSeverity, asset_id: incidentAssetId, asset_name: incidentAssetName, assigned_to: incidentAssignee })
+      });
+      if (!response.ok) throw new Error(`Create incident failed (${response.status})`);
+      const created: Incident = await response.json();
+      setIncidents(current => [created, ...current]);
+      setIncidentTitle("");
+      setIncidentDescription("");
+    } catch (error) {
+      setIncidentError(error instanceof Error ? error.message : "Unable to create incident");
+    } finally {
+      setIncidentSaving(false);
+    }
+  };
+
+  const filteredIncidents = incidents.filter((incident) =>
+    [incident.id, incident.title, incident.description, incident.severity, incident.asset_name, incident.assigned_to, incident.status]
+      .join(" ").toLowerCase().includes(incidentSearch.toLowerCase())
+  );
 
   const filteredThreats = threats.filter((t) =>
     [t.id, t.rule_id, t.title, t.severity, t.asset_name, t.status, t.evidence].join(" ").toLowerCase().includes(threatSearch.toLowerCase())
@@ -189,6 +261,40 @@ function App() {
                   filteredVulnerabilities.length === 0 ? <div className="inventory-state">No findings match your search.</div> :
                   <div className="table-wrap"><table className="asset-table vuln-table"><thead><tr><th>VULNERABILITY</th><th>SEVERITY / CVSS</th><th>AFFECTED ASSET</th><th>PACKAGE</th><th>VERSION</th><th>REMEDIATION</th></tr></thead><tbody>{filteredVulnerabilities.map(v => <tr key={v.id}><td><div className="asset-identity"><span className="asset-symbol vuln-symbol"><ShieldAlert size={15}/></span><div><b>{v.title}</b><small>{v.cve} · {v.id}</small></div></div></td><td><span className={`severity ${v.severity.toLowerCase()}`}>{v.severity}</span><div className="cvss-score">{v.cvss.toFixed(1)} CVSS</div></td><td><div className="provider-cell">{v.asset_name}<small>{v.asset_id}</small></div></td><td>{v.package}</td><td><div className="provider-cell">{v.current_version}<small>Fixed: {v.fixed_version}</small></div></td><td><span className={`remediation-status ${v.status.toLowerCase().replace(" ", "-")}`}><i/>{v.status}</span></td></tr>)}</tbody></table></div>}
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO SECURITY FINDINGS · NO LIVE SCANNER CONNECTED</span></div>
+              </section>
+            </section>
+          ) : active === "Incident response" ? (
+            <section className="inventory-view incident-response-view">
+              <section className="welcome-row">
+                <div><div className="eyebrow"><span className="eyebrow-line"/> SECURITY OPERATIONS / CASE MANAGEMENT</div><h1>Incident <em>Response</em></h1><p>Investigate security events, assign responders, and track containment through resolution.</p></div>
+                <div className="date-chip"><Siren size={15}/> RESPONSE WORKFLOW <span className="live-dot"/> DEMO CASES</div>
+              </section>
+              <section className="inventory-summary">
+                <article className="metric-card"><div className="metric-top"><span>Total incidents</span><div className="metric-icon cyan"><Siren size={17}/></div></div><div className="metric-value">{incidents.length}</div><div className="metric-change"><span className="change-good">API-backed</span><span>case records</span></div><div className="metric-accent cyan"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Critical cases</span><div className="metric-icon red"><AlertOctagon size={17}/></div></div><div className="metric-value">{incidents.filter(i => i.severity === "Critical" && i.status !== "Resolved").length}</div><div className="metric-change"><span className="change-alert">Priority response</span><span>unresolved</span></div><div className="metric-accent red"/></article>
+                <article className="metric-card"><div className="metric-top"><span>In progress</span><div className="metric-icon amber"><Activity size={17}/></div></div><div className="metric-value">{incidents.filter(i => i.status === "Investigating" || i.status === "Contained").length}</div><div className="metric-change"><span className="change-alert">Active response</span><span>investigating / contained</span></div><div className="metric-accent amber"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Resolved</span><div className="metric-icon green"><CheckCircle2 size={17}/></div></div><div className="metric-value">{incidents.filter(i => i.status === "Resolved").length}</div><div className="metric-change"><span className="change-good">Closed</span><span>response complete</span></div><div className="metric-accent green"/></article>
+              </section>
+              <section className="panel incident-create-panel">
+                <div className="panel-heading"><div><h3>Create response case</h3><p>Open a case and assign an initial response owner</p></div><span className="panel-menu">NEW CASE</span></div>
+                <div className="incident-form-grid">
+                  <input aria-label="Incident title" placeholder="Incident title" value={incidentTitle} onChange={e => setIncidentTitle(e.target.value)}/>
+                  <select aria-label="Incident severity" value={incidentSeverity} onChange={e => setIncidentSeverity(e.target.value)}><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+                  <input aria-label="Affected asset ID" value={incidentAssetId} onChange={e => setIncidentAssetId(e.target.value)} placeholder="Asset ID"/>
+                  <input aria-label="Affected asset name" value={incidentAssetName} onChange={e => setIncidentAssetName(e.target.value)} placeholder="Asset name"/>
+                  <input aria-label="Assigned responder" value={incidentAssignee} onChange={e => setIncidentAssignee(e.target.value)} placeholder="Assigned responder"/>
+                  <textarea aria-label="Incident description" placeholder="Describe the event, impact, and initial context..." value={incidentDescription} onChange={e => setIncidentDescription(e.target.value)}/>
+                </div>
+                <div className="incident-form-actions"><span>New cases start with status OPEN</span><button className="primary-button" onClick={createIncident} disabled={incidentSaving}><Siren size={14}/>{incidentSaving ? "Creating case..." : "Create incident"}</button></div>
+              </section>
+              <section className="panel inventory-panel">
+                <div className="panel-heading inventory-heading"><div><h3>Incident queue</h3><p>Cases retrieved from the NEXUS response API</p></div><button className="subtle-button" onClick={() => setIncidentRefresh(v => v + 1)} disabled={incidentLoading}><RefreshCw size={14} className={incidentLoading ? "spin" : ""}/> Refresh queue</button></div>
+                <div className="inventory-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search incidents" placeholder="Search by case, title, asset, owner or status..." value={incidentSearch} onChange={e => setIncidentSearch(e.target.value)}/></div><span className="inventory-count">{filteredIncidents.length} OF {incidents.length} INCIDENTS</span></div>
+                {incidentError && <div className="incident-error"><AlertTriangle size={14}/>{incidentError}</div>}
+                {incidentLoading ? <div className="inventory-state"><span className="loader-dot"/> Loading incident queue from API...</div> :
+                  filteredIncidents.length === 0 ? <div className="inventory-state">No incidents match your search.</div> :
+                  <div className="table-wrap"><table className="asset-table incident-table"><thead><tr><th>INCIDENT</th><th>SEVERITY</th><th>AFFECTED ASSET</th><th>RESPONDER</th><th>STATUS / ACTION</th></tr></thead><tbody>{filteredIncidents.map(incident => <tr key={incident.id}><td><div className="asset-identity"><span className="asset-symbol incident-symbol"><Siren size={15}/></span><div><b>{incident.title}</b><small>{incident.id} · {new Date(incident.created_at).toLocaleString()}</small><small className="incident-description">{incident.description}</small></div></div></td><td><span className={`severity ${incident.severity.toLowerCase()}`}>{incident.severity}</span></td><td><div className="provider-cell">{incident.asset_name}<small>{incident.asset_id}</small></div></td><td><select className="incident-select" aria-label={`Assign ${incident.id}`} value={incident.assigned_to} onChange={e => updateIncident(incident.id, { assigned_to: e.target.value })}><option>Security Analyst</option><option>Cloud Security</option><option>Identity Team</option><option>Platform Team</option><option>Unassigned</option></select></td><td><select className={`incident-select status-select ${incident.status.toLowerCase()}`} aria-label={`Update status ${incident.id}`} value={incident.status} onChange={e => updateIncident(incident.id, { status: e.target.value })}><option>Open</option><option>Investigating</option><option>Contained</option><option>Resolved</option></select></td></tr>)}</tbody></table></div>}
+                <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · CASE MANAGEMENT ACTIVE</span><span>DEMO INCIDENT DATA · IN-MEMORY STORAGE, NOT PERSISTENT</span></div>
               </section>
             </section>
           ) : active === "Threat detection" ? (
