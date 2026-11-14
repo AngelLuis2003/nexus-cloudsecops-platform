@@ -42,7 +42,12 @@ function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [active, setActive] = useState("Overview");
   const [apiState, setApiState] = useState("Connecting");
-  const [assets, setAssets] = useState<CloudAsset[]>([]);\n  const [threats, setThreats] = useState<ThreatDetection[]>([]);\n  const [threatLoading, setThreatLoading] = useState(false);\n  const [threatError, setThreatError] = useState("");\n  const [threatSearch, setThreatSearch] = useState("");\n  const [threatRefresh, setThreatRefresh] = useState(0);
+  const [assets, setAssets] = useState<CloudAsset[]>([]);
+  const [threats, setThreats] = useState<ThreatDetection[]>([]);
+  const [threatLoading, setThreatLoading] = useState(false);
+  const [threatError, setThreatError] = useState("");
+  const [threatSearch, setThreatSearch] = useState("");
+  const [threatRefresh, setThreatRefresh] = useState(0);
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
   const [vulnLoading, setVulnLoading] = useState(false);
   const [vulnError, setVulnError] = useState("");
