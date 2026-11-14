@@ -170,18 +170,27 @@ function App() {
     let cancelled = false;
     setRiskLoading(true);
     setRiskError("");
-    Promise.all([
+    Promise.allSettled([
       fetch(apiBaseUrl + "/api/v1/assets").then(r => { if (!r.ok) throw new Error("Asset inventory unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/vulnerabilities").then(r => { if (!r.ok) throw new Error("Vulnerability data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/threats").then(r => { if (!r.ok) throw new Error("Threat detection data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/incidents").then(r => { if (!r.ok) throw new Error("Incident response data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/compliance").then(r => { if (!r.ok) throw new Error("Compliance assessment unavailable"); return r.json(); })
-    ]).then(([assetData, vulnerabilityData, threatData, incidentData, complianceData]) => {
+    ]).then(([assetResult, vulnerabilityResult, threatResult, incidentResult, complianceResult]) => {
       if (cancelled) return;
-      if (![assetData, vulnerabilityData, threatData, incidentData].every(Array.isArray) || !Array.isArray(complianceData.controls)) throw new Error("Unexpected risk dashboard response");
-      setAssets(assetData); setVulnerabilities(vulnerabilityData); setThreats(threatData); setIncidents(incidentData); setCompliance(complianceData);
-    }).catch((error: Error) => { if (!cancelled) setRiskError(error.message || "Unable to load executive risk data"); })
-      .finally(() => { if (!cancelled) setRiskLoading(false); });
+      const failures: string[] = [];
+      if (assetResult.status === "fulfilled" && Array.isArray(assetResult.value)) setAssets(assetResult.value);
+      else failures.push("Cloud assets");
+      if (vulnerabilityResult.status === "fulfilled" && Array.isArray(vulnerabilityResult.value)) setVulnerabilities(vulnerabilityResult.value);
+      else failures.push("Vulnerabilities");
+      if (threatResult.status === "fulfilled" && Array.isArray(threatResult.value)) setThreats(threatResult.value);
+      else failures.push("Threat detections");
+      if (incidentResult.status === "fulfilled" && Array.isArray(incidentResult.value)) setIncidents(incidentResult.value);
+      else failures.push("Incidents");
+      if (complianceResult.status === "fulfilled" && Array.isArray(complianceResult.value?.controls)) setCompliance(complianceResult.value);
+      else failures.push("Compliance");
+      setRiskError(failures.length ? "Some data sources could not be refreshed: " + failures.join(", ") + ". Previously loaded values are preserved." : "");
+    }).finally(() => { if (!cancelled) setRiskLoading(false); });
     return () => { cancelled = true; };
   }, [active, riskRefresh]);
 
@@ -426,9 +435,9 @@ function App() {
                 <div><div className="eyebrow"><span className="eyebrow-line"/> EXECUTIVE SECURITY INTELLIGENCE</div><h1>Executive <em>Risk Dashboard</em></h1><p>Consolidated risk posture across cloud assets, vulnerabilities, detections, incidents, and NIST CSF 2.0.</p></div>
                 <div className="date-chip"><Gauge size={15}/> RISK INTELLIGENCE <span className="live-dot"/> API AGGREGATED</div>
               </section>
-              {riskLoading ? <div className="inventory-state"><span className="loader-dot"/> Aggregating security posture from NEXUS services...</div> :
-                riskError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load executive risk data</b><small>{riskError}. Verify the API services and retry.</small></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)}>Retry</button></div> : (
+              {riskLoading ? <div className="inventory-state"><span className="loader-dot"/> Aggregating security posture from NEXUS services...</div> : (
                 <>
+                  {riskError && <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Partial data refresh</b><small>{riskError}</small></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)}>Retry</button></div>}
                   <section className="inventory-summary">
                     <article className="metric-card"><div className="metric-top"><span>Cloud assets</span><div className="metric-icon cyan"><Cloud size={17}/></div></div><div className="metric-value">{assets.length}</div><div className="metric-change"><span className="change-good">{assets.filter(a => a.status.toLowerCase() === "active").length} active</span><span>inventory records</span></div><div className="metric-accent cyan"/></article>
                     <article className="metric-card"><div className="metric-top"><span>Critical / high vulnerabilities</span><div className="metric-icon red"><ShieldAlert size={17}/></div></div><div className="metric-value">{vulnerabilities.filter(v => ["critical","high"].includes(v.severity.toLowerCase()) && v.status.toLowerCase() !== "remediated").length}</div><div className="metric-change"><span className="change-alert">Prioritized findings</span><span>not remediated</span></div><div className="metric-accent red"/></article>
