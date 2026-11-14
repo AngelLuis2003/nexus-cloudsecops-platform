@@ -13,6 +13,8 @@ type CloudAsset = {
 
 type Vulnerability = { id: string; cve: string; title: string; severity: string; cvss: number; asset_id: string; asset_name: string; package: string; current_version: string; fixed_version: string; status: string; discovered_at: string; description: string; };
 
+type ThreatDetection = { id: string; rule_id: string; title: string; description: string; severity: string; asset_id: string; asset_name: string; event_type: string; source: string; status: string; detected_at: string; evidence: string; };
+
 type Overview = {
   assets_monitored: number;
   critical_findings: number;
@@ -40,7 +42,7 @@ function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [active, setActive] = useState("Overview");
   const [apiState, setApiState] = useState("Connecting");
-  const [assets, setAssets] = useState<CloudAsset[]>([]);
+  const [assets, setAssets] = useState<CloudAsset[]>([]);\n  const [threats, setThreats] = useState<ThreatDetection[]>([]);\n  const [threatLoading, setThreatLoading] = useState(false);\n  const [threatError, setThreatError] = useState("");\n  const [threatSearch, setThreatSearch] = useState("");\n  const [threatRefresh, setThreatRefresh] = useState(0);
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
   const [vulnLoading, setVulnLoading] = useState(false);
   const [vulnError, setVulnError] = useState("");
@@ -86,6 +88,24 @@ function App() {
       .finally(() => { if (!cancelled) setVulnLoading(false); });
     return () => { cancelled = true; };
   }, [active, vulnRefresh]);
+
+  useEffect(() => {
+    if (active !== "Threat detection") return;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    let cancelled = false;
+    setThreatLoading(true);
+    setThreatError("");
+    fetch(`${apiBaseUrl}/api/v1/threats`)
+      .then((response) => { if (!response.ok) throw new Error(`Threat request failed (${response.status})`); return response.json(); })
+      .then((data: ThreatDetection[]) => { if (!Array.isArray(data)) throw new Error("Unexpected threat response"); if (!cancelled) setThreats(data); })
+      .catch((error: Error) => { if (!cancelled) setThreatError(error.message || "Unable to load detections"); })
+      .finally(() => { if (!cancelled) setThreatLoading(false); });
+    return () => { cancelled = true; };
+  }, [active, threatRefresh]);
+
+  const filteredThreats = threats.filter((t) =>
+    [t.id, t.rule_id, t.title, t.severity, t.asset_name, t.status, t.evidence].join(" ").toLowerCase().includes(threatSearch.toLowerCase())
+  );
 
   const filteredVulnerabilities = vulnerabilities.filter((v) =>
     [v.id, v.cve, v.title, v.severity, v.asset_name, v.package, v.status].join(" ").toLowerCase().includes(vulnSearch.toLowerCase())
@@ -164,6 +184,28 @@ function App() {
                   filteredVulnerabilities.length === 0 ? <div className="inventory-state">No findings match your search.</div> :
                   <div className="table-wrap"><table className="asset-table vuln-table"><thead><tr><th>VULNERABILITY</th><th>SEVERITY / CVSS</th><th>AFFECTED ASSET</th><th>PACKAGE</th><th>VERSION</th><th>REMEDIATION</th></tr></thead><tbody>{filteredVulnerabilities.map(v => <tr key={v.id}><td><div className="asset-identity"><span className="asset-symbol vuln-symbol"><ShieldAlert size={15}/></span><div><b>{v.title}</b><small>{v.cve} · {v.id}</small></div></div></td><td><span className={`severity ${v.severity.toLowerCase()}`}>{v.severity}</span><div className="cvss-score">{v.cvss.toFixed(1)} CVSS</div></td><td><div className="provider-cell">{v.asset_name}<small>{v.asset_id}</small></div></td><td>{v.package}</td><td><div className="provider-cell">{v.current_version}<small>Fixed: {v.fixed_version}</small></div></td><td><span className={`remediation-status ${v.status.toLowerCase().replace(" ", "-")}`}><i/>{v.status}</span></td></tr>)}</tbody></table></div>}
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO SECURITY FINDINGS · NO LIVE SCANNER CONNECTED</span></div>
+              </section>
+            </section>
+          ) : active === "Threat detection" ? (
+            <section className="inventory-view threat-detection-view">
+              <section className="welcome-row">
+                <div><div className="eyebrow"><span className="eyebrow-line"/> SECURITY MONITORING / RULE ENGINE</div><h1>Threat <em>Detection</em></h1><p>Identify suspicious cloud activity using deterministic security detection rules.</p></div>
+                <div className="date-chip"><Radar size={15}/> TELEMETRY SOURCE <span className="live-dot"/> SAMPLE EVENTS</div>
+              </section>
+              <section className="inventory-summary">
+                <article className="metric-card"><div className="metric-top"><span>Detections generated</span><div className="metric-icon cyan"><Radar size={17}/></div></div><div className="metric-value">{threats.length}</div><div className="metric-change"><span className="change-good">Rule engine</span><span>evaluated events</span></div><div className="metric-accent cyan"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Critical alerts</span><div className="metric-icon red"><AlertOctagon size={17}/></div></div><div className="metric-value">{threats.filter(t => t.severity === "Critical").length}</div><div className="metric-change"><span className="change-alert">Priority response</span><span>critical severity</span></div><div className="metric-accent red"/></article>
+                <article className="metric-card"><div className="metric-top"><span>High severity</span><div className="metric-icon amber"><AlertTriangle size={17}/></div></div><div className="metric-value">{threats.filter(t => t.severity === "High").length}</div><div className="metric-change"><span className="change-alert">Analyst review</span><span>high severity</span></div><div className="metric-accent amber"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Detection rules</span><div className="metric-icon green"><ShieldCheck size={17}/></div></div><div className="metric-value">{new Set(threats.map(t => t.rule_id)).size}</div><div className="metric-change"><span className="change-good">Active logic</span><span>unique rule IDs</span></div><div className="metric-accent green"/></article>
+              </section>
+              <section className="panel inventory-panel">
+                <div className="panel-heading inventory-heading"><div><h3>Detection queue</h3><p>Alerts generated by the NEXUS sample telemetry rule engine</p></div><button className="subtle-button" onClick={() => setThreatRefresh(v => v + 1)} disabled={threatLoading}><RefreshCw size={14} className={threatLoading ? "spin" : ""}/> Re-evaluate events</button></div>
+                <div className="inventory-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search detections" placeholder="Search by rule, alert, asset or evidence..." value={threatSearch} onChange={e => setThreatSearch(e.target.value)}/></div><span className="inventory-count">{filteredThreats.length} OF {threats.length} DETECTIONS</span></div>
+                {threatLoading ? <div className="inventory-state"><span className="loader-dot"/> Evaluating sample telemetry against detection rules...</div> :
+                  threatError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load detections</b><small>{threatError}. Check the API deployment and try again.</small></div><button className="subtle-button" onClick={() => setThreatRefresh(v => v + 1)}>Retry</button></div> :
+                  filteredThreats.length === 0 ? <div className="inventory-state">No detections match your search.</div> :
+                  <div className="table-wrap"><table className="asset-table threat-table"><thead><tr><th>DETECTION</th><th>SEVERITY</th><th>AFFECTED ASSET</th><th>RULE / EVENT</th><th>EVIDENCE</th><th>STATUS</th></tr></thead><tbody>{filteredThreats.map(t => <tr key={t.id}><td><div className="asset-identity"><span className="asset-symbol threat-symbol"><Radar size={15}/></span><div><b>{t.title}</b><small>{t.id} · {new Date(t.detected_at).toLocaleString()}</small></div></div></td><td><span className={`severity ${t.severity.toLowerCase()}`}>{t.severity}</span></td><td><div className="provider-cell">{t.asset_name}<small>{t.asset_id}</small></div></td><td><div className="provider-cell">{t.rule_id}<small>{t.event_type}</small></div></td><td className="evidence-cell">{t.evidence}</td><td><span className="remediation-status in-progress"><i/>{t.status}</span></td></tr>)}</tbody></table></div>}
+                <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · RULE ENGINE ACTIVE</span><span>DEMO TELEMETRY · NOT LIVE AWS MONITORING</span></div>
               </section>
             </section>
           ) : (
