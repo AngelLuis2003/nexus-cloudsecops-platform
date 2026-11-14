@@ -166,6 +166,7 @@ function App() {
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO SECURITY FINDINGS · NO LIVE SCANNER CONNECTED</span></div>
               </section>
             </section>
+          ) : (
           <>
           <section className="welcome-row">
             <div><div className="eyebrow"><span className="eyebrow-line"/> SECURITY OPERATIONS CENTER</div><h1>Command <em>Center</em></h1><p>Real-time visibility across your cloud security posture.</p></div>
