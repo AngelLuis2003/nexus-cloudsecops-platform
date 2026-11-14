@@ -3,8 +3,13 @@ import {
   Activity, AlertOctagon, ArrowUpRight, Bell, Boxes, CheckCircle2,
   ChevronDown, Cloud, Command, FileCheck2, Gauge, LayoutDashboard,
   LockKeyhole, Radar, Search, Server, Shield, ShieldAlert, ShieldCheck,
-  Siren, Wifi, Zap
+  Siren, Wifi, Zap, RefreshCw, Database, Globe2, AlertTriangle
 } from "lucide-react";
+
+type CloudAsset = {
+  id: string; name: string; resource_type: string; provider: string; region: string;
+  environment: string; status: string; criticality: string; public_exposure: boolean;
+};
 
 type Overview = {
   assets_monitored: number;
@@ -33,6 +38,11 @@ function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [active, setActive] = useState("Overview");
   const [apiState, setApiState] = useState("Connecting");
+  const [assets, setAssets] = useState<CloudAsset[]>([]);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetsError, setAssetsError] = useState("");
+  const [assetSearch, setAssetSearch] = useState("");
+  const [assetRefresh, setAssetRefresh] = useState(0);
 
   useEffect(() => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -41,6 +51,25 @@ function App() {
       .then((data: Overview) => { setOverview(data); setApiState("Connected"); })
       .catch(() => setApiState("Demo mode"));
   }, []);
+
+  useEffect(() => {
+    if (active !== "Asset inventory") return;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    let cancelled = false;
+    setAssetsLoading(true);
+    setAssetsError("");
+    fetch(`${apiBaseUrl}/api/v1/assets`)
+      .then((response) => { if (!response.ok) throw new Error(`Inventory request failed (${response.status})`); return response.json(); })
+      .then((data: CloudAsset[]) => { if (!Array.isArray(data)) throw new Error("Unexpected inventory response"); if (!cancelled) setAssets(data); })
+      .catch((error: Error) => { if (!cancelled) setAssetsError(error.message || "Unable to load cloud assets"); })
+      .finally(() => { if (!cancelled) setAssetsLoading(false); });
+    return () => { cancelled = true; };
+  }, [active, assetRefresh]);
+
+  const filteredAssets = assets.filter((asset) =>
+    [asset.id, asset.name, asset.resource_type, asset.provider, asset.region, asset.environment, asset.status, asset.criticality]
+      .join(" ").toLowerCase().includes(assetSearch.toLowerCase())
+  );
 
   const metrics = [
     { label: "Cloud assets monitored", value: overview?.assets_monitored.toLocaleString() ?? "1,284", change: "+8.2%", icon: Cloud, tone: "cyan" },
@@ -68,6 +97,30 @@ function App() {
         </header>
 
         <div className="content">
+          {active === "Asset inventory" ? (
+            <section className="inventory-view">
+              <section className="welcome-row">
+                <div><div className="eyebrow"><span className="eyebrow-line"/> CLOUD ASSET INVENTORY</div><h1>Cloud <em>Assets</em></h1><p>Discover and review the resources connected to your cloud environment.</p></div>
+                <div className="date-chip"><Database size={15}/> INVENTORY SOURCE <span className="live-dot"/> DEMO DATA</div>
+              </section>
+              <section className="inventory-summary">
+                <article className="metric-card"><div className="metric-top"><span>Assets in inventory</span><div className="metric-icon cyan"><Boxes size={17}/></div></div><div className="metric-value">{assets.length}</div><div className="metric-change"><span className="change-good">API-backed</span><span>records returned</span></div><div className="metric-accent cyan"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Publicly exposed</span><div className="metric-icon red"><Globe2 size={17}/></div></div><div className="metric-value">{assets.filter(a => a.public_exposure).length}</div><div className="metric-change"><span className="change-alert">Requires review</span><span>public exposure</span></div><div className="metric-accent red"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Critical assets</span><div className="metric-icon amber"><AlertTriangle size={17}/></div></div><div className="metric-value">{assets.filter(a => a.criticality.toLowerCase() === "critical").length}</div><div className="metric-change"><span className="change-alert">High impact</span><span>criticality rating</span></div><div className="metric-accent amber"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Active resources</span><div className="metric-icon green"><CheckCircle2 size={17}/></div></div><div className="metric-value">{assets.filter(a => a.status.toLowerCase() === "active").length}</div><div className="metric-change"><span className="change-good">Operational</span><span>resource status</span></div><div className="metric-accent green"/></article>
+              </section>
+              <section className="panel inventory-panel">
+                <div className="panel-heading inventory-heading"><div><h3>Discovered cloud resources</h3><p>Asset records retrieved from the NEXUS API</p></div><button className="subtle-button" onClick={() => setAssetRefresh(v => v + 1)} disabled={assetsLoading}><RefreshCw size={14} className={assetsLoading ? "spin" : ""}/> Refresh inventory</button></div>
+                <div className="inventory-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search assets" placeholder="Search by name, type, region or ID..." value={assetSearch} onChange={e => setAssetSearch(e.target.value)}/></div><span className="inventory-count">{filteredAssets.length} OF {assets.length} ASSETS</span></div>
+                {assetsLoading ? <div className="inventory-state"><span className="loader-dot"/> Loading cloud inventory from API...</div> :
+                  assetsError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load inventory</b><small>{assetsError}. Check the API deployment and try again.</small></div><button className="subtle-button" onClick={() => setAssetRefresh(v => v + 1)}>Retry</button></div> :
+                  filteredAssets.length === 0 ? <div className="inventory-state">No assets match your search.</div> :
+                  <div className="table-wrap"><table className="asset-table"><thead><tr><th>ASSET</th><th>RESOURCE TYPE</th><th>PROVIDER / REGION</th><th>ENVIRONMENT</th><th>STATUS</th><th>CRITICALITY</th><th>EXPOSURE</th></tr></thead><tbody>{filteredAssets.map(asset => <tr key={asset.id}><td><div className="asset-identity"><span className="asset-symbol"><Server size={15}/></span><div><b>{asset.name}</b><small>{asset.id}</small></div></div></td><td>{asset.resource_type}</td><td><div className="provider-cell">{asset.provider}<small>{asset.region}</small></div></td><td><span className="environment-tag">{asset.environment}</span></td><td><span className={`resource-status ${asset.status.toLowerCase()}`}><i/>{asset.status}</span></td><td><span className={`severity ${asset.criticality.toLowerCase()}`}><i/>{asset.criticality}</span></td><td>{asset.public_exposure ? <span className="exposure exposed"><AlertTriangle size={12}/> Public</span> : <span className="exposure private"><LockKeyhole size={12}/> Private</span>}</td></tr>)}</tbody></table></div>}
+                <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO CLOUD DATA · NOT LIVE AWS DISCOVERY</span></div>
+              </section>
+            </section>
+          ) : (
+          <>
           <section className="welcome-row">
             <div><div className="eyebrow"><span className="eyebrow-line"/> SECURITY OPERATIONS CENTER</div><h1>Command <em>Center</em></h1><p>Real-time visibility across your cloud security posture.</p></div>
             <div className="date-chip"><Activity size={15}/> LIVE SECURITY OVERVIEW <span className="live-dot"/></div>
@@ -89,6 +142,8 @@ function App() {
           </section>
 
           <section className="panel findings-panel"><div className="panel-heading"><div><h3>Priority findings</h3><p>Security issues requiring analyst attention</p></div><button className="text-button" onClick={() => setActive("Vulnerability management")}>View all findings <ArrowUpRight size={14}/></button></div><div className="table-wrap"><table><thead><tr><th>FINDING</th><th>AFFECTED ASSET</th><th>SEVERITY</th><th>DETECTED</th><th/></tr></thead><tbody>{findings.map((f) => <tr key={f.id}><td><div className="finding-title">{f.title}<small>{f.id}</small></div></td><td className="asset-name"><Server size={14}/>{f.asset}</td><td><span className={`severity ${f.severity.toLowerCase()}`}><i/>{f.severity}</span></td><td className="muted-cell">{f.age}</td><td><button className="row-action" aria-label={`Open finding ${f.id}`}><ArrowUpRight size={15}/></button></td></tr>)}</tbody></table></div></section>
+          </>
+          )}
           <footer><span>© 2026 NEXUS SECURITY SYSTEMS <b>·</b> PLATFORM v0.1.0</span><span className="api-indicator"><i className={apiState === "Connected" ? "online" : ""}/>{apiState === "Connected" ? "API CONNECTED" : apiState.toUpperCase()}</span><span>BUILT FOR DEFENSE <LockKeyhole size={12}/></span></footer>
         </div>
       </main>
