@@ -35,6 +35,7 @@ const nav = [
   { label: "Threat detection", icon: Radar },
   { label: "Incident response", icon: Siren },
   { label: "Compliance center", icon: FileCheck2 },
+  { label: "Executive risk dashboard", icon: Gauge },
 ];
 
 const findings = [
@@ -51,6 +52,9 @@ function App() {
   const [complianceError, setComplianceError] = useState("");
   const [complianceSearch, setComplianceSearch] = useState("");
   const [complianceRefresh, setComplianceRefresh] = useState(0);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [riskError, setRiskError] = useState("");
+  const [riskRefresh, setRiskRefresh] = useState(0);
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState("");
   const [incidentSearch, setIncidentSearch] = useState("");
@@ -159,6 +163,27 @@ function App() {
       .finally(() => { if (!cancelled) setComplianceLoading(false); });
     return () => { cancelled = true; };
   }, [active, complianceRefresh]);
+
+  useEffect(() => {
+    if (active !== "Executive risk dashboard") return;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    let cancelled = false;
+    setRiskLoading(true);
+    setRiskError("");
+    Promise.all([
+      fetch(apiBaseUrl + "/api/v1/assets").then(r => { if (!r.ok) throw new Error("Asset inventory unavailable"); return r.json(); }),
+      fetch(apiBaseUrl + "/api/v1/vulnerabilities").then(r => { if (!r.ok) throw new Error("Vulnerability data unavailable"); return r.json(); }),
+      fetch(apiBaseUrl + "/api/v1/threats").then(r => { if (!r.ok) throw new Error("Threat detection data unavailable"); return r.json(); }),
+      fetch(apiBaseUrl + "/api/v1/incidents").then(r => { if (!r.ok) throw new Error("Incident response data unavailable"); return r.json(); }),
+      fetch(apiBaseUrl + "/api/v1/compliance").then(r => { if (!r.ok) throw new Error("Compliance assessment unavailable"); return r.json(); })
+    ]).then(([assetData, vulnerabilityData, threatData, incidentData, complianceData]) => {
+      if (cancelled) return;
+      if (![assetData, vulnerabilityData, threatData, incidentData].every(Array.isArray) || !Array.isArray(complianceData.controls)) throw new Error("Unexpected risk dashboard response");
+      setAssets(assetData); setVulnerabilities(vulnerabilityData); setThreats(threatData); setIncidents(incidentData); setCompliance(complianceData);
+    }).catch((error: Error) => { if (!cancelled) setRiskError(error.message || "Unable to load executive risk data"); })
+      .finally(() => { if (!cancelled) setRiskLoading(false); });
+    return () => { cancelled = true; };
+  }, [active, riskRefresh]);
 
   const updateComplianceControl = async (controlId: string, updates: Partial<ComplianceControl>) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -394,6 +419,48 @@ function App() {
                   <div className="table-wrap"><table className="asset-table threat-table"><thead><tr><th>DETECTION</th><th>SEVERITY</th><th>AFFECTED ASSET</th><th>RULE / EVENT</th><th>EVIDENCE</th><th>STATUS</th></tr></thead><tbody>{filteredThreats.map(t => <tr key={t.id}><td><div className="asset-identity"><span className="asset-symbol threat-symbol"><Radar size={15}/></span><div><b>{t.title}</b><small>{t.id} · {new Date(t.detected_at).toLocaleString()}</small></div></div></td><td><span className={`severity ${t.severity.toLowerCase()}`}>{t.severity}</span></td><td><div className="provider-cell">{t.asset_name}<small>{t.asset_id}</small></div></td><td><div className="provider-cell">{t.rule_id}<small>{t.event_type}</small></div></td><td className="evidence-cell">{t.evidence}</td><td><span className="remediation-status in-progress"><i/>{t.status}</span></td></tr>)}</tbody></table></div>}
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · RULE ENGINE ACTIVE</span><span>DEMO TELEMETRY · NOT LIVE AWS MONITORING</span></div>
               </section>
+            </section>
+          ) : active === "Executive risk dashboard" ? (
+            <section className="inventory-view executive-risk-view">
+              <section className="welcome-row">
+                <div><div className="eyebrow"><span className="eyebrow-line"/> EXECUTIVE SECURITY INTELLIGENCE</div><h1>Executive <em>Risk Dashboard</em></h1><p>Consolidated risk posture across cloud assets, vulnerabilities, detections, incidents, and NIST CSF 2.0.</p></div>
+                <div className="date-chip"><Gauge size={15}/> RISK INTELLIGENCE <span className="live-dot"/> API AGGREGATED</div>
+              </section>
+              {riskLoading ? <div className="inventory-state"><span className="loader-dot"/> Aggregating security posture from NEXUS services...</div> :
+                riskError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load executive risk data</b><small>{riskError}. Verify the API services and retry.</small></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)}>Retry</button></div> : (
+                <>
+                  <section className="inventory-summary">
+                    <article className="metric-card"><div className="metric-top"><span>Cloud assets</span><div className="metric-icon cyan"><Cloud size={17}/></div></div><div className="metric-value">{assets.length}</div><div className="metric-change"><span className="change-good">{assets.filter(a => a.status.toLowerCase() === "active").length} active</span><span>inventory records</span></div><div className="metric-accent cyan"/></article>
+                    <article className="metric-card"><div className="metric-top"><span>Critical / high vulnerabilities</span><div className="metric-icon red"><ShieldAlert size={17}/></div></div><div className="metric-value">{vulnerabilities.filter(v => ["critical","high"].includes(v.severity.toLowerCase()) && v.status.toLowerCase() !== "remediated").length}</div><div className="metric-change"><span className="change-alert">Prioritized findings</span><span>not remediated</span></div><div className="metric-accent red"/></article>
+                    <article className="metric-card"><div className="metric-top"><span>Active threat detections</span><div className="metric-icon amber"><Radar size={17}/></div></div><div className="metric-value">{threats.filter(t => t.status.toLowerCase() !== "resolved").length}</div><div className="metric-change"><span className="change-alert">{threats.filter(t => t.severity.toLowerCase() === "critical").length} critical</span><span>demo detections</span></div><div className="metric-accent amber"/></article>
+                    <article className="metric-card"><div className="metric-top"><span>NIST CSF 2.0 score</span><div className="metric-icon green"><ShieldCheck size={17}/></div></div><div className="metric-value">{compliance?.score ?? 0}%</div><div className="metric-change"><span className="change-good">{compliance?.implemented ?? 0} implemented</span><span>of {compliance?.total_controls ?? 0} controls</span></div><div className="metric-accent green"/></article>
+                  </section>
+                  <section className="middle-grid executive-risk-grid">
+                    <article className="panel"><div className="panel-heading"><div><h3>Exposure by severity</h3><p>Open vulnerability findings and active detections</p></div><ShieldAlert size={17}/></div>
+                      <div className="risk-bars">{(["Critical","High","Medium","Low"] as const).map(level => {
+                        const vulnCount = vulnerabilities.filter(v => v.severity.toLowerCase() === level.toLowerCase() && v.status.toLowerCase() !== "remediated").length;
+                        const threatCount = threats.filter(t => t.severity.toLowerCase() === level.toLowerCase() && t.status.toLowerCase() !== "resolved").length;
+                        const total = vulnCount + threatCount;
+                        const max = Math.max(1, ...["Critical","High","Medium","Low"].map(s => vulnerabilities.filter(v => v.severity.toLowerCase() === s.toLowerCase() && v.status.toLowerCase() !== "remediated").length + threats.filter(t => t.severity.toLowerCase() === s.toLowerCase() && t.status.toLowerCase() !== "resolved").length));
+                        return <div className="risk-bar-row" key={level}><span>{level}</span><div className="risk-bar-track"><i className={"risk-bar-fill " + level.toLowerCase()} style={{width: (total / max * 100) + "%"}}/></div><b>{total}</b></div>;
+                      })}</div>
+                      <div className="risk-legend executive-legend"><span><i className="risk-dot critical"/> Vulnerabilities + detections</span><small>Counts exclude remediated / resolved records</small></div>
+                    </article>
+                    <article className="panel executive-incident-panel"><div className="panel-heading"><div><h3>Incident response posture</h3><p>Current case lifecycle</p></div><Siren size={17}/></div>
+                      <div className="incident-posture-total"><strong>{incidents.filter(i => i.status.toLowerCase() !== "resolved").length}</strong><span>ACTIVE CASES</span></div>
+                      <div className="incident-status-list">{(["Open","Investigating","Contained","Resolved"] as const).map(status => <div key={status}><span>{status}</span><b>{incidents.filter(i => i.status.toLowerCase() === status.toLowerCase()).length}</b></div>)}</div>
+                      <button className="text-button" onClick={() => setActive("Incident response")}>Open incident queue <ArrowUpRight size={14}/></button>
+                    </article>
+                  </section>
+                  <section className="panel inventory-panel executive-priority-panel">
+                    <div className="panel-heading inventory-heading"><div><h3>Priority risk register</h3><p>Highest-severity open vulnerabilities and unresolved incidents</p></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)} disabled={riskLoading}><RefreshCw size={14} className={riskLoading ? "spin" : ""}/> Refresh risk data</button></div>
+                    <div className="table-wrap"><table className="asset-table"><thead><tr><th>RISK ITEM</th><th>TYPE</th><th>SEVERITY</th><th>AFFECTED RESOURCE</th><th>STATUS</th></tr></thead><tbody>
+                      {[...vulnerabilities.filter(v => ["critical","high"].includes(v.severity.toLowerCase()) && v.status.toLowerCase() !== "remediated").map(v => ({id:v.id,title:v.title,type:"Vulnerability",severity:v.severity,asset:v.asset_name,status:v.status})), ...incidents.filter(i => i.status.toLowerCase() !== "resolved" && ["critical","high"].includes(i.severity.toLowerCase())).map(i => ({id:i.id,title:i.title,type:"Incident",severity:i.severity,asset:i.asset_name,status:i.status}))].sort((a,b) => (a.severity === "Critical" ? 0 : 1) - (b.severity === "Critical" ? 0 : 1)).slice(0,8).map(item => <tr key={item.type + "-" + item.id}><td><div className="finding-title">{item.title}<small>{item.id}</small></div></td><td>{item.type}</td><td><span className={"severity " + item.severity.toLowerCase()}><i/>{item.severity}</span></td><td className="asset-name">{item.asset}</td><td><span className="remediation-status in-progress"><i/>{item.status}</span></td></tr>)}
+                    </tbody></table></div>
+                    <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · EXECUTIVE VIEW AGGREGATED</span><span>DEMO SECURITY DATA · NOT LIVE AWS TELEMETRY</span></div>
+                  </section>
+                </>
+              )}
             </section>
           ) : (
           <>
