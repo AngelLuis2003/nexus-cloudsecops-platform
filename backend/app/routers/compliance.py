@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import StoredRecord, get_db
 
 router = APIRouter(prefix="/api/v1/compliance", tags=["Compliance Center"])
 
@@ -38,9 +42,8 @@ class ComplianceOverview(BaseModel):
     controls: list[ComplianceControl]
 
 
-# Illustrative assessment records mapped to NIST CSF 2.0 concepts.
-# They are not an independent audit or a certification.
-_controls: list[ComplianceControl] = [
+# Illustrative NIST CSF 2.0 assessment records, seeded once and then persisted in PostgreSQL.
+_INITIAL_CONTROLS = [
     ComplianceControl(control_id="GV.OC-01", function="GOVERN", category="Organizational Context", title="Mission and stakeholder context", description="Document the organizational mission, stakeholders, and dependencies that shape cybersecurity risk.", status="Implemented", owner="Security Governance", evidence="Demo evidence: security charter and stakeholder register reviewed.", last_assessed=datetime(2026, 11, 10, tzinfo=timezone.utc)),
     ComplianceControl(control_id="GV.RR-02", function="GOVERN", category="Roles, Responsibilities, and Authorities", title="Cybersecurity roles and accountability", description="Establish and communicate cybersecurity roles, responsibilities, and authorities.", status="Partially implemented", owner="Security Governance", evidence="Demo evidence: role matrix exists; approval workflow is pending.", last_assessed=datetime(2026, 11, 9, tzinfo=timezone.utc)),
     ComplianceControl(control_id="ID.AM-01", function="IDENTIFY", category="Asset Management", title="Hardware asset inventory", description="Maintain an inventory of organizational hardware assets.", status="Implemented", owner="Cloud Security", evidence="Demo evidence: NEXUS asset inventory contains five sample cloud resources.", last_assessed=datetime(2026, 11, 12, tzinfo=timezone.utc)),
@@ -56,14 +59,30 @@ _controls: list[ComplianceControl] = [
 ]
 
 
-def build_overview() -> ComplianceOverview:
+def seed_compliance(db: Session) -> None:
+    existing = db.scalar(select(StoredRecord.record_id).where(StoredRecord.module == "compliance").limit(1))
+    if existing is None:
+        for control in _INITIAL_CONTROLS:
+            db.add(StoredRecord(module="compliance", record_id=control.control_id, payload=control.model_dump(mode="json")))
+        db.commit()
+
+
+def _load_controls(db: Session) -> list[ComplianceControl]:
+    rows = db.scalars(select(StoredRecord).where(StoredRecord.module == "compliance")).all()
+    return sorted(
+        [ComplianceControl.model_validate(row.payload) for row in rows],
+        key=lambda control: control.control_id,
+    )
+
+
+def build_overview(controls: list[ComplianceControl]) -> ComplianceOverview:
     counts = {
-        "Implemented": sum(c.status == "Implemented" for c in _controls),
-        "Partially implemented": sum(c.status == "Partially implemented" for c in _controls),
-        "Gap": sum(c.status == "Gap" for c in _controls),
-        "Not assessed": sum(c.status == "Not assessed" for c in _controls),
+        "Implemented": sum(c.status == "Implemented" for c in controls),
+        "Partially implemented": sum(c.status == "Partially implemented" for c in controls),
+        "Gap": sum(c.status == "Gap" for c in controls),
+        "Not assessed": sum(c.status == "Not assessed" for c in controls),
     }
-    total = len(_controls)
+    total = len(controls)
     score = round(((counts["Implemented"] + counts["Partially implemented"] * 0.5) / total) * 100) if total else 0
     return ComplianceOverview(
         framework="NIST Cybersecurity Framework 2.0",
@@ -73,22 +92,27 @@ def build_overview() -> ComplianceOverview:
         partial=counts["Partially implemented"],
         gaps=counts["Gap"],
         not_assessed=counts["Not assessed"],
-        controls=_controls,
+        controls=controls,
     )
 
 
 @router.get("", response_model=ComplianceOverview)
-def get_compliance_overview() -> ComplianceOverview:
-    return build_overview()
+def get_compliance_overview(db: Session = Depends(get_db)) -> ComplianceOverview:
+    return build_overview(_load_controls(db))
 
 
 @router.patch("/{control_id}", response_model=ComplianceOverview)
-def update_compliance_control(control_id: str, payload: ComplianceControlUpdate) -> ComplianceOverview:
-    for index, control in enumerate(_controls):
-        if control.control_id == control_id:
-            updates = payload.model_dump(exclude_unset=True)
-            _controls[index] = control.model_copy(
-                update={**updates, "last_assessed": datetime.now(timezone.utc)}
-            )
-            return build_overview()
-    raise HTTPException(status_code=404, detail="Compliance control not found")
+def update_compliance_control(
+    control_id: str,
+    payload: ComplianceControlUpdate,
+    db: Session = Depends(get_db),
+) -> ComplianceOverview:
+    row = db.get(StoredRecord, {"module": "compliance", "record_id": control_id})
+    if row is None:
+        raise HTTPException(status_code=404, detail="Compliance control not found")
+    control = ComplianceControl.model_validate(row.payload)
+    updates = payload.model_dump(exclude_unset=True)
+    updated = control.model_copy(update={**updates, "last_assessed": datetime.now(timezone.utc)})
+    row.payload = updated.model_dump(mode="json")
+    db.commit()
+    return build_overview(_load_controls(db))
