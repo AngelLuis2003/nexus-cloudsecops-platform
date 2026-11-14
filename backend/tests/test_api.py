@@ -36,3 +36,14 @@ def test_asset_inventory_endpoint():
         "criticality",
         "public_exposure",
     }.issubset(assets[0].keys())
+
+
+def test_vulnerability_management_endpoint():
+    response = client.get("/api/v1/vulnerabilities")
+    assert response.status_code == 200
+    vulnerabilities = response.json()
+    assert len(vulnerabilities) == 6
+    assert vulnerabilities[0]["severity"] == "Critical"
+    assert vulnerabilities[0]["cvss"] == 9.8
+    assert vulnerabilities[0]["asset_id"] == "NX-ASSET-002"
+    assert {"id", "cve", "title", "severity", "cvss", "asset_id", "asset_name", "package", "current_version", "fixed_version", "status", "discovered_at", "description"}.issubset(vulnerabilities[0].keys())
