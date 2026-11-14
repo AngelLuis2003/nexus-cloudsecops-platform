@@ -11,6 +11,8 @@ type CloudAsset = {
   environment: string; status: string; criticality: string; public_exposure: boolean;
 };
 
+type Vulnerability = { id: string; cve: string; title: string; severity: string; cvss: number; asset_id: string; asset_name: string; package: string; current_version: string; fixed_version: string; status: string; discovered_at: string; description: string; };
+
 type Overview = {
   assets_monitored: number;
   critical_findings: number;
@@ -39,6 +41,11 @@ function App() {
   const [active, setActive] = useState("Overview");
   const [apiState, setApiState] = useState("Connecting");
   const [assets, setAssets] = useState<CloudAsset[]>([]);
+  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
+  const [vulnLoading, setVulnLoading] = useState(false);
+  const [vulnError, setVulnError] = useState("");
+  const [vulnSearch, setVulnSearch] = useState("");
+  const [vulnRefresh, setVulnRefresh] = useState(0);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsError, setAssetsError] = useState("");
   const [assetSearch, setAssetSearch] = useState("");
@@ -65,6 +72,24 @@ function App() {
       .finally(() => { if (!cancelled) setAssetsLoading(false); });
     return () => { cancelled = true; };
   }, [active, assetRefresh]);
+
+  useEffect(() => {
+    if (active !== "Vulnerability management") return;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    let cancelled = false;
+    setVulnLoading(true);
+    setVulnError("");
+    fetch(`${apiBaseUrl}/api/v1/vulnerabilities`)
+      .then((response) => { if (!response.ok) throw new Error(`Vulnerability request failed (${response.status})`); return response.json(); })
+      .then((data: Vulnerability[]) => { if (!Array.isArray(data)) throw new Error("Unexpected vulnerability response"); if (!cancelled) setVulnerabilities(data); })
+      .catch((error: Error) => { if (!cancelled) setVulnError(error.message || "Unable to load vulnerabilities"); })
+      .finally(() => { if (!cancelled) setVulnLoading(false); });
+    return () => { cancelled = true; };
+  }, [active, vulnRefresh]);
+
+  const filteredVulnerabilities = vulnerabilities.filter((v) =>
+    [v.id, v.cve, v.title, v.severity, v.asset_name, v.package, v.status].join(" ").toLowerCase().includes(vulnSearch.toLowerCase())
+  );
 
   const filteredAssets = assets.filter((asset) =>
     [asset.id, asset.name, asset.resource_type, asset.provider, asset.region, asset.environment, asset.status, asset.criticality]
@@ -119,7 +144,28 @@ function App() {
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO CLOUD DATA · NOT LIVE AWS DISCOVERY</span></div>
               </section>
             </section>
-          ) : (
+          ) : active === "Vulnerability management" ? (
+            <section className="inventory-view vulnerability-view">
+              <section className="welcome-row">
+                <div><div className="eyebrow"><span className="eyebrow-line"/> VULNERABILITY MANAGEMENT</div><h1>Vulnerability <em>Center</em></h1><p>Prioritize software weaknesses and track remediation across your cloud assets.</p></div>
+                <div className="date-chip"><ShieldAlert size={15}/> SCANNER SOURCE <span className="live-dot"/> DEMO FINDINGS</div>
+              </section>
+              <section className="inventory-summary">
+                <article className="metric-card"><div className="metric-top"><span>Total findings</span><div className="metric-icon cyan"><ShieldAlert size={17}/></div></div><div className="metric-value">{vulnerabilities.length}</div><div className="metric-change"><span className="change-good">API-backed</span><span>records returned</span></div><div className="metric-accent cyan"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Critical</span><div className="metric-icon red"><AlertOctagon size={17}/></div></div><div className="metric-value">{vulnerabilities.filter(v => v.severity === "Critical").length}</div><div className="metric-change"><span className="change-alert">Immediate review</span><span>highest severity</span></div><div className="metric-accent red"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Open findings</span><div className="metric-icon amber"><AlertTriangle size={17}/></div></div><div className="metric-value">{vulnerabilities.filter(v => v.status === "Open").length}</div><div className="metric-change"><span className="change-alert">Needs action</span><span>not yet in progress</span></div><div className="metric-accent amber"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Remediated</span><div className="metric-icon green"><CheckCircle2 size={17}/></div></div><div className="metric-value">{vulnerabilities.filter(v => v.status === "Remediated").length}</div><div className="metric-change"><span className="change-good">Resolved</span><span>remediation complete</span></div><div className="metric-accent green"/></article>
+              </section>
+              <section className="panel inventory-panel">
+                <div className="panel-heading inventory-heading"><div><h3>Vulnerability findings</h3><p>Findings retrieved from the NEXUS API</p></div><button className="subtle-button" onClick={() => setVulnRefresh(v => v + 1)} disabled={vulnLoading}><RefreshCw size={14} className={vulnLoading ? "spin" : ""}/> Refresh findings</button></div>
+                <div className="inventory-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search vulnerabilities" placeholder="Search by CVE, title, asset or package..." value={vulnSearch} onChange={e => setVulnSearch(e.target.value)}/></div><span className="inventory-count">{filteredVulnerabilities.length} OF {vulnerabilities.length} FINDINGS</span></div>
+                {vulnLoading ? <div className="inventory-state"><span className="loader-dot"/> Loading vulnerability findings from API...</div> :
+                  vulnError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load findings</b><small>{vulnError}. Check the API deployment and try again.</small></div><button className="subtle-button" onClick={() => setVulnRefresh(v => v + 1)}>Retry</button></div> :
+                  filteredVulnerabilities.length === 0 ? <div className="inventory-state">No findings match your search.</div> :
+                  <div className="table-wrap"><table className="asset-table vuln-table"><thead><tr><th>VULNERABILITY</th><th>SEVERITY / CVSS</th><th>AFFECTED ASSET</th><th>PACKAGE</th><th>VERSION</th><th>REMEDIATION</th></tr></thead><tbody>{filteredVulnerabilities.map(v => <tr key={v.id}><td><div className="asset-identity"><span className="asset-symbol vuln-symbol"><ShieldAlert size={15}/></span><div><b>{v.title}</b><small>{v.cve} · {v.id}</small></div></div></td><td><span className={`severity ${v.severity.toLowerCase()}`}>{v.severity}</span><div className="cvss-score">{v.cvss.toFixed(1)} CVSS</div></td><td><div className="provider-cell">{v.asset_name}<small>{v.asset_id}</small></div></td><td>{v.package}</td><td><div className="provider-cell">{v.current_version}<small>Fixed: {v.fixed_version}</small></div></td><td><span className={`remediation-status ${v.status.toLowerCase().replace(" ", "-")}`}><i/>{v.status}</span></td></tr>)}</tbody></table></div>}
+                <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO SECURITY FINDINGS · NO LIVE SCANNER CONNECTED</span></div>
+              </section>
+            </section>
           <>
           <section className="welcome-row">
             <div><div className="eyebrow"><span className="eyebrow-line"/> SECURITY OPERATIONS CENTER</div><h1>Command <em>Center</em></h1><p>Real-time visibility across your cloud security posture.</p></div>
