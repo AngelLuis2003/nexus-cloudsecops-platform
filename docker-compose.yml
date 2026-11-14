@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: ./backend
+    container_name: nexus-api
+    ports:
+      - "8000:8000"
+    environment:
+      NEXUS_ENV: development
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
