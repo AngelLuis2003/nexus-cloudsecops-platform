@@ -46,3 +46,14 @@
 .inventory-footnote .live-dot{width:5px;height:5px}
 @media(max-width:1100px){.inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.inventory-toolbar{align-items:stretch;flex-direction:column}.inventory-search{max-width:none;min-height:38px}.inventory-count{align-self:flex-end}.inventory-footnote{gap:8px;flex-wrap:wrap;padding:9px 0;font-size:7px}}
+
+
+/* Vulnerability Management */
+.vuln-table{min-width:980px}
+.vuln-table td{vertical-align:middle}
+.vuln-symbol{color:#ff9aa2;border-color:#58313c;background:#2a1b29}
+.cvss-score{margin-top:6px;color:#9aabc0;font:8px 'DM Mono'}
+.remediation-status{display:inline-flex;align-items:center;gap:6px;font-size:9px;color:#f0bd6d}
+.remediation-status i{width:5px;height:5px;border-radius:50%;background:currentColor}
+.remediation-status.in-progress{color:#62d3e8}
+.remediation-status.remediated{color:#58d7a8}
