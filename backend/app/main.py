@@ -1,19 +1,33 @@
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.database import SessionLocal, initialize_database
 from app.routers.assets import router as assets_router
 from app.routers.vulnerabilities import router as vulnerabilities_router
 from app.routers.threats import router as threats_router
-from app.routers.incidents import router as incidents_router
-from app.routers.compliance import router as compliance_router
+from app.routers.incidents import router as incidents_router, seed_incidents
+from app.routers.compliance import router as compliance_router, seed_compliance
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    initialize_database()
+    with SessionLocal() as db:
+        seed_incidents(db)
+        seed_compliance(db)
+    yield
+
 
 app = FastAPI(
     title="NEXUS CloudSecOps API",
     description="Cloud security operations platform API.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
