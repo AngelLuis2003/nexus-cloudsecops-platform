@@ -65,3 +65,27 @@
 .threat-symbol{color:#63d8ed;border-color:#245367;background:#102638}
 .evidence-cell{max-width:260px;white-space:normal;line-height:1.5;color:#9eb0c5}
 .threat-detection-view .inventory-panel{overflow:hidden}
+
+
+/* Incident Response */
+.incident-create-panel{margin-bottom:16px}
+.incident-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
+.incident-form-grid input,.incident-form-grid select,.incident-form-grid textarea,.incident-select{min-width:0;border:1px solid #293b51;border-radius:5px;background:#0b1523;color:#dce8f5;padding:10px;font:10px 'DM Sans',sans-serif;outline:none}
+.incident-form-grid input:focus,.incident-form-grid select:focus,.incident-form-grid textarea:focus,.incident-select:focus{border-color:#258da7;box-shadow:0 0 0 3px #21c7e812}
+.incident-form-grid textarea{grid-column:span 2;min-height:39px;resize:vertical}
+.incident-form-grid input::placeholder,.incident-form-grid textarea::placeholder{color:#657990}
+.incident-form-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:#7489a0;font:8px 'DM Mono';letter-spacing:.4px}
+.incident-form-actions .primary-button{padding:9px 12px}
+.incident-form-actions .primary-button:disabled{opacity:.6;cursor:wait}
+.incident-table{min-width:1050px}
+.incident-table td{vertical-align:middle}
+.incident-symbol{color:#f0bd6d;border-color:#58452c;background:#2b251b}
+.incident-description{display:block;max-width:310px;white-space:normal;color:#8396ad;font-size:8px;line-height:1.4;margin-top:4px}
+.incident-select{padding:7px 8px;font-size:9px}
+.status-select.open{color:#f0bd6d}
+.status-select.investigating{color:#64d5e8}
+.status-select.contained{color:#ff9a7a}
+.status-select.resolved{color:#58d7a8}
+.incident-error{display:flex;align-items:center;gap:8px;margin-top:12px;padding:9px 11px;border:1px solid #633744;border-radius:5px;background:#2a1b27;color:#ff9ba5;font-size:9px}
+@media(max-width:900px){.incident-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.incident-form-grid{grid-template-columns:1fr}.incident-form-grid textarea{grid-column:auto}.incident-form-actions{align-items:flex-start;gap:12px;flex-direction:column}}
