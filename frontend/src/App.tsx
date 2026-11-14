@@ -17,6 +17,9 @@ type ThreatDetection = { id: string; rule_id: string; title: string; description
 
 type Incident = { id: string; title: string; description: string; severity: string; asset_id: string; asset_name: string; assigned_to: string; status: string; response_notes: string; created_at: string; updated_at: string; };
 
+type ComplianceControl = { control_id: string; function: string; category: string; title: string; description: string; status: string; owner: string; evidence: string; last_assessed: string; };
+type ComplianceOverview = { framework: string; score: number; total_controls: number; implemented: number; partial: number; gaps: number; not_assessed: number; controls: ComplianceControl[]; };
+
 type Overview = {
   assets_monitored: number;
   critical_findings: number;
@@ -43,6 +46,11 @@ const findings = [
 function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [compliance, setCompliance] = useState<ComplianceOverview | null>(null);
+  const [complianceLoading, setComplianceLoading] = useState(false);
+  const [complianceError, setComplianceError] = useState("");
+  const [complianceSearch, setComplianceSearch] = useState("");
+  const [complianceRefresh, setComplianceRefresh] = useState(0);
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState("");
   const [incidentSearch, setIncidentSearch] = useState("");
@@ -138,6 +146,34 @@ function App() {
     return () => { cancelled = true; };
   }, [active, incidentRefresh]);
 
+  useEffect(() => {
+    if (active !== "Compliance center") return;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    let cancelled = false;
+    setComplianceLoading(true);
+    setComplianceError("");
+    fetch(`${apiBaseUrl}/api/v1/compliance`)
+      .then((response) => { if (!response.ok) throw new Error(`Compliance request failed (${response.status})`); return response.json(); })
+      .then((data: ComplianceOverview) => { if (!Array.isArray(data.controls)) throw new Error("Unexpected compliance response"); if (!cancelled) setCompliance(data); })
+      .catch((error: Error) => { if (!cancelled) setComplianceError(error.message || "Unable to load compliance assessment"); })
+      .finally(() => { if (!cancelled) setComplianceLoading(false); });
+    return () => { cancelled = true; };
+  }, [active, complianceRefresh]);
+
+  const updateComplianceControl = async (controlId: string, updates: Partial<ComplianceControl>) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/compliance/${encodeURIComponent(controlId)}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates)
+      });
+      if (!response.ok) throw new Error(`Control update failed (${response.status})`);
+      const updated: ComplianceOverview = await response.json();
+      setCompliance(updated);
+    } catch (error) {
+      setComplianceError(error instanceof Error ? error.message : "Unable to update compliance control");
+    }
+  };
+
   const updateIncident = async (id: string, updates: Partial<Incident>) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
     try {
@@ -174,6 +210,11 @@ function App() {
       setIncidentSaving(false);
     }
   };
+
+  const filteredComplianceControls = (compliance?.controls ?? []).filter((control) =>
+    [control.control_id, control.function, control.category, control.title, control.description, control.status, control.owner, control.evidence]
+      .join(" ").toLowerCase().includes(complianceSearch.toLowerCase())
+  );
 
   const filteredIncidents = incidents.filter((incident) =>
     [incident.id, incident.title, incident.description, incident.severity, incident.asset_name, incident.assigned_to, incident.status]
@@ -295,6 +336,41 @@ function App() {
                   filteredIncidents.length === 0 ? <div className="inventory-state">No incidents match your search.</div> :
                   <div className="table-wrap"><table className="asset-table incident-table"><thead><tr><th>INCIDENT</th><th>SEVERITY</th><th>AFFECTED ASSET</th><th>RESPONDER</th><th>STATUS / ACTION</th></tr></thead><tbody>{filteredIncidents.map(incident => <tr key={incident.id}><td><div className="asset-identity"><span className="asset-symbol incident-symbol"><Siren size={15}/></span><div><b>{incident.title}</b><small>{incident.id} · {new Date(incident.created_at).toLocaleString()}</small><small className="incident-description">{incident.description}</small></div></div></td><td><span className={`severity ${incident.severity.toLowerCase()}`}>{incident.severity}</span></td><td><div className="provider-cell">{incident.asset_name}<small>{incident.asset_id}</small></div></td><td><select className="incident-select" aria-label={`Assign ${incident.id}`} value={incident.assigned_to} onChange={e => updateIncident(incident.id, { assigned_to: e.target.value })}><option>Security Analyst</option><option>Cloud Security</option><option>Identity Team</option><option>Platform Team</option><option>Unassigned</option></select></td><td><select className={`incident-select status-select ${incident.status.toLowerCase()}`} aria-label={`Update status ${incident.id}`} value={incident.status} onChange={e => updateIncident(incident.id, { status: e.target.value })}><option>Open</option><option>Investigating</option><option>Contained</option><option>Resolved</option></select></td></tr>)}</tbody></table></div>}
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · CASE MANAGEMENT ACTIVE</span><span>DEMO INCIDENT DATA · IN-MEMORY STORAGE, NOT PERSISTENT</span></div>
+              </section>
+            </section>
+          ) : active === "Compliance center" ? (
+            <section className="inventory-view compliance-view">
+              <section className="welcome-row">
+                <div><div className="eyebrow"><span className="eyebrow-line"/> GOVERNANCE / RISK / COMPLIANCE</div><h1>Compliance <em>Center</em></h1><p>Assess security controls, track implementation gaps, and maintain evidence against NIST CSF 2.0.</p></div>
+                <div className="date-chip"><FileCheck2 size={15}/> FRAMEWORK <span className="live-dot"/> NIST CSF 2.0</div>
+              </section>
+              <section className="inventory-summary">
+                <article className="metric-card"><div className="metric-top"><span>Compliance score</span><div className="metric-icon cyan"><Gauge size={17}/></div></div><div className="metric-value">{compliance ? `${compliance.score}%` : "—"}</div><div className="metric-change"><span className="change-good">Weighted assessment</span><span>implemented + partial</span></div><div className="metric-accent cyan"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Implemented</span><div className="metric-icon green"><CheckCircle2 size={17}/></div></div><div className="metric-value">{compliance?.implemented ?? "—"}</div><div className="metric-change"><span className="change-good">Verified in demo</span><span>controls</span></div><div className="metric-accent green"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Implementation gaps</span><div className="metric-icon red"><AlertTriangle size={17}/></div></div><div className="metric-value">{compliance?.gaps ?? "—"}</div><div className="metric-change"><span className="change-alert">Requires action</span><span>identified gaps</span></div><div className="metric-accent red"/></article>
+                <article className="metric-card"><div className="metric-top"><span>Partial / not assessed</span><div className="metric-icon amber"><Activity size={17}/></div></div><div className="metric-value">{compliance ? compliance.partial + compliance.not_assessed : "—"}</div><div className="metric-change"><span className="change-alert">Needs evidence</span><span>controls</span></div><div className="metric-accent amber"/></article>
+              </section>
+              <section className="panel compliance-framework-panel">
+                <div className="panel-heading"><div><h3>NIST CSF 2.0 function coverage</h3><p>Control assessment grouped across the six framework functions</p></div><span className="panel-menu">{compliance?.total_controls ?? 0} CONTROLS</span></div>
+                <div className="compliance-functions">
+                  {["GOVERN", "IDENTIFY", "PROTECT", "DETECT", "RESPOND", "RECOVER"].map((fn) => {
+                    const controls = compliance?.controls.filter(control => control.function === fn) ?? [];
+                    const completed = controls.filter(control => control.status === "Implemented").length;
+                    const partial = controls.filter(control => control.status === "Partially implemented").length;
+                    const score = controls.length ? Math.round(((completed + partial * 0.5) / controls.length) * 100) : 0;
+                    return <article className="compliance-function" key={fn}><div><b>{fn}</b><strong>{score}%</strong></div><div className="compliance-progress"><i style={{ width: `${score}%` }}/></div><small>{completed} implemented · {partial} partial · {controls.length} controls</small></article>;
+                  })}
+                </div>
+              </section>
+              <section className="panel inventory-panel compliance-controls-panel">
+                <div className="panel-heading inventory-heading"><div><h3>Control assessment register</h3><p>Update control status and document supporting evidence</p></div><button className="subtle-button" onClick={() => setComplianceRefresh(v => v + 1)} disabled={complianceLoading}><RefreshCw size={14} className={complianceLoading ? "spin" : ""}/> Refresh assessment</button></div>
+                <div className="inventory-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search compliance controls" placeholder="Search control, function, owner or evidence..." value={complianceSearch} onChange={e => setComplianceSearch(e.target.value)}/></div><span className="inventory-count">{filteredComplianceControls.length} OF {compliance?.total_controls ?? 0} CONTROLS</span></div>
+                {complianceError && <div className="incident-error"><AlertTriangle size={14}/>{complianceError}</div>}
+                {complianceLoading ? <div className="inventory-state"><span className="loader-dot"/> Loading NIST CSF assessment from API...</div> :
+                  !compliance ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load assessment</b><small>{complianceError || "The compliance API did not return assessment data."}</small></div><button className="subtle-button" onClick={() => setComplianceRefresh(v => v + 1)}>Retry</button></div> :
+                  filteredComplianceControls.length === 0 ? <div className="inventory-state">No controls match your search.</div> :
+                  <div className="table-wrap"><table className="asset-table compliance-table"><thead><tr><th>CONTROL / CATEGORY</th><th>FUNCTION</th><th>STATUS / UPDATE</th><th>OWNER</th><th>EVIDENCE</th></tr></thead><tbody>{filteredComplianceControls.map(control => <tr key={control.control_id}><td><div className="asset-identity"><span className="asset-symbol compliance-symbol"><FileCheck2 size={15}/></span><div><b>{control.title}</b><small>{control.control_id} · {control.category}</small><small className="compliance-description">{control.description}</small></div></div></td><td><span className="environment-tag">{control.function}</span></td><td><select className={`incident-select compliance-status ${control.status.toLowerCase().replaceAll(" ", "-")}`} aria-label={`Update status ${control.control_id}`} value={control.status} onChange={e => updateComplianceControl(control.control_id, { status: e.target.value })}><option>Implemented</option><option>Partially implemented</option><option>Gap</option><option>Not assessed</option></select></td><td><select className="incident-select" aria-label={`Assign owner ${control.control_id}`} value={control.owner} onChange={e => updateComplianceControl(control.control_id, { owner: e.target.value })}><option>Security Governance</option><option>Cloud Security</option><option>Vulnerability Team</option><option>Identity Team</option><option>Platform Team</option><option>Security Operations</option><option>Incident Response</option><option>Business Continuity</option></select></td><td className="compliance-evidence">{control.evidence}</td></tr>)}</tbody></table></div>}
+                <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · ASSESSMENT ACTIVE</span><span>DEMO CONTROL EVIDENCE · NOT AN INDEPENDENT AUDIT OR CERTIFICATION</span></div>
               </section>
             </section>
           ) : active === "Threat detection" ? (
