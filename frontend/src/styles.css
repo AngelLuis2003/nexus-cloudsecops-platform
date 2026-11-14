@@ -115,3 +115,30 @@
 
 .compliance-evidence-input{display:block;width:250px;min-height:64px;resize:vertical;border:1px solid #293b51;border-radius:5px;background:#0b1523;color:#9aadc1;padding:8px;font:9px/1.5 'DM Sans',sans-serif;outline:none}
 .compliance-evidence-input:focus{border-color:#258da7;box-shadow:0 0 0 3px #21c7e812}
+
+
+/* Executive Risk Dashboard */
+.executive-risk-view .inventory-summary{margin-top:4px}
+.executive-risk-grid{grid-template-columns:minmax(0,1.45fr) minmax(280px,1fr);margin-bottom:16px}
+.executive-risk-grid>.panel{min-width:0}
+.risk-bars{display:grid;gap:17px;margin:25px 4px 20px}
+.risk-bar-row{display:grid;grid-template-columns:78px minmax(0,1fr) 25px;align-items:center;gap:12px;color:#a9b9ca;font-size:10px}
+.risk-bar-row>b{font:500 11px 'DM Mono';color:#e4eef8;text-align:right}
+.risk-bar-track{height:9px;border-radius:20px;background:#1a2a3e;overflow:hidden}
+.risk-bar-fill{height:100%;display:block;border-radius:20px;min-width:2px;background:#21c7e8;box-shadow:0 0 12px #21c7e833}
+.risk-bar-fill.critical{background:#ef7180;box-shadow:0 0 12px #ef718044}
+.risk-bar-fill.high{background:#e9ae5d;box-shadow:0 0 12px #e9ae5d44}
+.risk-bar-fill.medium{background:#35c8e4}
+.risk-bar-fill.low{background:#7189a8}
+.executive-legend{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #1e3045;padding-top:13px}
+.executive-legend>span{display:flex;align-items:center;gap:7px;font-size:9px;color:#9eb0c5}
+.executive-legend small{font-size:8px;color:#6f829a}
+.incident-posture-total{display:flex;align-items:baseline;gap:10px;margin:24px 0 16px}
+.incident-posture-total strong{font:600 38px 'Space Grotesk';color:#eaf4ff}
+.incident-posture-total span{font:8px 'DM Mono';letter-spacing:1px;color:#7c91a9}
+.incident-status-list{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:15px}
+.incident-status-list>div{display:flex;justify-content:space-between;align-items:center;padding:10px 11px;border:1px solid #22364c;border-radius:5px;background:#0d1928;color:#9dafc3;font-size:9px}
+.incident-status-list b{font:500 11px 'DM Mono';color:#e4effb}
+.executive-priority-panel{margin-bottom:4px}
+@media(max-width:1100px){.executive-risk-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.risk-bar-row{grid-template-columns:66px minmax(0,1fr) 22px;gap:8px}.executive-legend{align-items:flex-start;flex-direction:column}.incident-status-list{gap:7px}}
