@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.routers.assets import router as assets_router
+from app.routers.vulnerabilities import router as vulnerabilities_router
 
 app = FastAPI(
     title="NEXUS CloudSecOps API",
@@ -21,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(assets_router)
+app.include_router(vulnerabilities_router)
 
 
 class HealthResponse(BaseModel):
