@@ -196,3 +196,8 @@ footer{font-size:9px}
   th{font-size:9px}
   td{font-size:10px}
 }
+
+
+/* Global readability scaling — applies consistently across every NEXUS view */
+body{zoom:1.12}
+@media(max-width:760px){body{zoom:1.08}}
