@@ -82,3 +82,34 @@ def test_incident_response_create_endpoint():
     assert response.status_code == 201
     assert response.json()["status"] == "Open"
     assert response.json()["assigned_to"] == "Platform Team"
+
+
+
+def test_compliance_center_endpoint():
+    response = client.get("/api/v1/compliance")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["framework"] == "NIST Cybersecurity Framework 2.0"
+    assert data["total_controls"] == 12
+    assert data["score"] == 50
+    assert data["implemented"] == 2
+    assert data["partial"] == 5
+    assert data["gaps"] == 3
+    assert data["not_assessed"] == 2
+    assert { "control_id", "function", "category", "title", "description", "status", "owner", "evidence", "last_assessed" }.issubset(data["controls"][0].keys())
+
+
+def test_compliance_control_update_endpoint():
+    response = client.patch("/api/v1/compliance/PR.AA-01", json={"status": "Implemented", "owner": "Identity Team", "evidence": "Reviewed access policy evidence."})
+    assert response.status_code == 200
+    data = response.json()
+    updated = next(control for control in data["controls"] if control["control_id"] == "PR.AA-01")
+    assert updated["status"] == "Implemented"
+    assert updated["owner"] == "Identity Team"
+    assert updated["evidence"] == "Reviewed access policy evidence."
+    assert data["score"] > 50
+
+
+def test_compliance_unknown_control_returns_404():
+    response = client.patch("/api/v1/compliance/UNKNOWN-99", json={"status": "Gap"})
+    assert response.status_code == 404
