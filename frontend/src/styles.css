@@ -57,3 +57,11 @@
 .remediation-status i{width:5px;height:5px;border-radius:50%;background:currentColor}
 .remediation-status.in-progress{color:#62d3e8}
 .remediation-status.remediated{color:#58d7a8}
+
+
+/* Threat Detection */
+.threat-table{min-width:1120px}
+.threat-table td{vertical-align:middle}
+.threat-symbol{color:#63d8ed;border-color:#245367;background:#102638}
+.evidence-cell{max-width:260px;white-space:normal;line-height:1.5;color:#9eb0c5}
+.threat-detection-view .inventory-panel{overflow:hidden}
