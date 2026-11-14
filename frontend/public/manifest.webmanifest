@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "NEXUS – CloudSecOps Command Center",
+  "short_name": "NEXUS",
+  "description": "NEXUS CloudSecOps Command Center",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay"
+  ],
+  "background_color": "#080d18",
+  "theme_color": "#080d18",
+  "icons": [
+    {
+      "src": "/nexus-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
