@@ -47,3 +47,16 @@ def test_vulnerability_management_endpoint():
     assert vulnerabilities[0]["cvss"] == 9.8
     assert vulnerabilities[0]["asset_id"] == "NX-ASSET-002"
     assert {"id", "cve", "title", "severity", "cvss", "asset_id", "asset_name", "package", "current_version", "fixed_version", "status", "discovered_at", "description"}.issubset(vulnerabilities[0].keys())
+
+
+def test_threat_detection_rules_endpoint():
+    response = client.get("/api/v1/threats")
+    assert response.status_code == 200
+    detections = response.json()
+    assert len(detections) == 4
+    assert detections[0]["rule_id"] == "NEXUS-CLOUD-001"
+    assert detections[0]["severity"] == "Critical"
+    assert detections[1]["asset_id"] == "NX-ASSET-005"
+    assert detections[2]["rule_id"] == "NEXUS-IAM-003"
+    assert detections[3]["rule_id"] == "NEXUS-API-004"
+    assert all(item["status"] == "New" for item in detections)
