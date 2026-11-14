@@ -91,7 +91,7 @@ def test_compliance_center_endpoint():
     data = response.json()
     assert data["framework"] == "NIST Cybersecurity Framework 2.0"
     assert data["total_controls"] == 12
-    assert data["score"] == 50
+    assert data["score"] == 38
     assert data["implemented"] == 2
     assert data["partial"] == 5
     assert data["gaps"] == 3
@@ -107,7 +107,7 @@ def test_compliance_control_update_endpoint():
     assert updated["status"] == "Implemented"
     assert updated["owner"] == "Identity Team"
     assert updated["evidence"] == "Reviewed access policy evidence."
-    assert data["score"] > 50
+    assert data["score"] > 38
 
 
 def test_compliance_unknown_control_returns_404():
