@@ -6,13 +6,16 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "window-controls-overlay"
-  ],
+  "display_override": ["standalone", "window-controls-overlay"],
   "background_color": "#080d18",
   "theme_color": "#080d18",
   "icons": [
+    {
+      "src": "/nexus-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/nexus-icon.svg",
       "sizes": "any",
