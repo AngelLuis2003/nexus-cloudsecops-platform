@@ -201,3 +201,65 @@ footer{font-size:9px}
 /* Global readability scaling — applies consistently across every NEXUS view */
 body{zoom:1.12}
 @media(max-width:760px){body{zoom:1.08}}
+
+
+/* Mobile-first navigation and layout refinement.
+   All rules are scoped to small screens; desktop presentation remains unchanged. */
+.mobile-menu-button{display:none}
+.mobile-nav-backdrop{display:none}
+@media(max-width:760px){
+  .mobile-menu-button{
+    display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;
+    border:1px solid #263b52;border-radius:6px;background:#101d2d;color:#c8e6f4;
+    cursor:pointer
+  }
+  .topbar{display:flex;align-items:center;gap:10px}
+  .breadcrumbs{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-actions{gap:7px}
+  .top-actions .icon-button{display:none}
+  .sidebar{
+    position:fixed;z-index:1001;top:0;left:0;bottom:0;width:min(84vw,320px);
+    height:100dvh;min-height:100dvh;padding:18px 16px;
+    display:flex;flex-direction:column;align-items:stretch;
+    background:#0b1523;border-right:1px solid #26384e;
+    box-shadow:18px 0 45px #0008;transform:translateX(-105%);
+    transition:transform .24s ease;overflow-y:auto
+  }
+  .sidebar.mobile-open{transform:translateX(0)}
+  .sidebar .brand{padding:4px 5px 18px}
+  .sidebar .workspace-label{display:flex;justify-content:space-between;margin:8px 5px 12px}
+  .sidebar nav{display:grid;gap:5px}
+  .sidebar .nav-item{width:100%;min-height:44px;padding:0 12px;text-align:left}
+  .sidebar .sidebar-bottom{display:grid;gap:14px;margin-top:auto;padding-top:20px}
+  .mobile-nav-backdrop{
+    display:block;position:fixed;z-index:1000;inset:0;border:0;
+    background:#020812a8;backdrop-filter:blur(2px)
+  }
+  .content{min-width:0}
+  .panel,.metric-card,.inventory-panel{min-width:0}
+  .metric-grid,.inventory-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .middle-grid,.executive-risk-grid{grid-template-columns:minmax(0,1fr)}
+  .panel{padding:13px}
+  .panel-heading{gap:10px}
+  .panel-heading h3{line-height:1.3}
+  .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:620px}
+  .asset-table{min-width:850px}
+  .vuln-table{min-width:980px}
+  .threat-table,.compliance-table{min-width:1120px}
+  .incident-table{min-width:1050px}
+  .welcome-row{min-width:0}
+  .date-chip{max-width:100%;white-space:normal}
+  .hero-panel{overflow:hidden}
+}
+@media(max-width:420px){
+  .topbar{padding:0 11px}
+  .content{padding:18px 11px}
+  .mobile-menu-button{width:36px;height:36px;flex-basis:36px}
+  .breadcrumbs{font-size:10px}
+  .top-avatar{width:28px;height:28px}
+  .metric-card{padding:10px}
+  .metric-value{font-size:22px}
+  .panel{padding:11px}
+  .incident-status-list{grid-template-columns:1fr 1fr}
+}
