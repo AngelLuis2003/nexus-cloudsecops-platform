@@ -3,7 +3,7 @@ import {
   Activity, AlertOctagon, ArrowUpRight, Bell, Boxes, CheckCircle2,
   ChevronDown, Cloud, Command, FileCheck2, Gauge, LayoutDashboard,
   LockKeyhole, Radar, Search, Server, Shield, ShieldAlert, ShieldCheck,
-  Siren, Wifi, Zap, RefreshCw, Database, Globe2, AlertTriangle
+  Siren, Wifi, Zap, RefreshCw, Database, Globe2, AlertTriangle, Menu, X
 } from "lucide-react";
 
 type CloudAsset = {
@@ -68,6 +68,7 @@ function App() {
   const [incidentSaving, setIncidentSaving] = useState(false);
 
   const [active, setActive] = useState("Overview");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [apiState, setApiState] = useState("Connecting");
   const [assets, setAssets] = useState<CloudAsset[]>([]);
   const [threats, setThreats] = useState<ThreatDetection[]>([]);
@@ -277,18 +278,20 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`}>
         <div className="brand"><div className="brand-mark"><Command size={21}/></div><div><strong>NEXUS</strong><span>CLOUDSECOPS</span></div></div>
         <div className="workspace-label">WORKSPACE <span>PRODUCTION</span></div>
-        <nav>{nav.map(({ label, icon: Icon }) => <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => setActive(label)}><Icon size={17}/><span>{label}</span>{label === "Incident response" && <i className="nav-count">3</i>}</button>)}</nav>
+        <nav>{nav.map(({ label, icon: Icon }) => <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => { setActive(label); setMobileNavOpen(false); }}><Icon size={17}/><span>{label}</span>{label === "Incident response" && <i className="nav-count">3</i>}</button>)}</nav>
         <div className="sidebar-bottom">
           <div className="security-status"><span className="pulse-dot"/><div><b>All systems operational</b><small>Last sync: just now</small></div></div>
           <div className="profile"><div className="avatar">SA</div><div><b>Security Analyst</b><small>Platform administrator</small></div><ChevronDown size={15}/></div>
         </div>
       </aside>
+      {mobileNavOpen && <button className="mobile-nav-backdrop" aria-label="Close navigation menu" onClick={() => setMobileNavOpen(false)} />}
 
       <main className="main">
         <header className="topbar">
+          <button className="mobile-menu-button" aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(open => !open)}>{mobileNavOpen ? <X size={20}/> : <Menu size={20}/>}</button>
           <div className="breadcrumbs"><span>Workspace</span><span className="slash">/</span><b>{active}</b></div>
           <div className="top-actions"><div className="environment"><span/> AWS / DEMO ENVIRONMENT</div><button className="icon-button"><Search size={17}/></button><button className="icon-button notification"><Bell size={17}/><i/></button><div className="top-avatar">SA</div></div>
         </header>
