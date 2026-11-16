@@ -1,3 +1,4 @@
+
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -9,7 +10,7 @@ from pydantic import BaseModel
 from app.database import SessionLocal, initialize_database
 from app.routers.assets import router as assets_router, seed_assets
 from app.routers.vulnerabilities import router as vulnerabilities_router
-from app.routers.threats import router as threats_router
+from app.routers.threats import router as threats_router, seed_threats
 from app.routers.incidents import router as incidents_router, seed_incidents
 from app.routers.compliance import router as compliance_router, seed_compliance
 
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI):
         seed_assets(db)
         seed_incidents(db)
         seed_compliance(db)
+        seed_threats(db)
     yield
 
 
