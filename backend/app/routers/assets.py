@@ -1,5 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import StoredRecord, get_db
 
 router = APIRouter(prefix="/api/v1/assets", tags=["Cloud Asset Inventory"])
 
@@ -17,7 +21,7 @@ class CloudAsset(BaseModel):
 
 
 # Clearly identified sample records. These are not discovered AWS resources.
-DEMO_ASSETS = [
+_INITIAL_ASSETS = [
     CloudAsset(
         id="NX-ASSET-001",
         name="prod-customer-data",
@@ -76,7 +80,32 @@ DEMO_ASSETS = [
 ]
 
 
+def seed_assets(db: Session) -> None:
+    """Insert the clearly labeled sample inventory once; preserve saved records."""
+    existing = db.scalar(
+        select(StoredRecord.record_id)
+        .where(StoredRecord.module == "assets")
+        .limit(1)
+    )
+    if existing is None:
+        for asset in _INITIAL_ASSETS:
+            db.add(
+                StoredRecord(
+                    module="assets",
+                    record_id=asset.id,
+                    payload=asset.model_dump(mode="json"),
+                )
+            )
+        db.commit()
+
+
 @router.get("", response_model=list[CloudAsset])
-def list_assets() -> list[CloudAsset]:
-    """Return sample cloud assets until a cloud discovery integration is configured."""
-    return DEMO_ASSETS
+def list_assets(db: Session = Depends(get_db)) -> list[CloudAsset]:
+    """Return asset inventory records persisted in the configured database."""
+    rows = db.scalars(
+        select(StoredRecord).where(StoredRecord.module == "assets")
+    ).all()
+    return [
+        CloudAsset.model_validate(row.payload)
+        for row in sorted(rows, key=lambda row: row.record_id)
+    ]
