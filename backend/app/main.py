@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -19,17 +18,14 @@ from app.routers.incidents import router as incidents_router, seed_incidents
 from app.routers.compliance import router as compliance_router, seed_compliance
 
 
-logger = logging.getLogger("nexus.database")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_database()
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
-    logger.info(
-        "Database connectivity check passed (dialect=%s)",
-        engine.dialect.name,
+    print(
+        f"NEXUS_DATABASE_CHECK_OK dialect={engine.dialect.name}",
+        flush=True,
     )
 
     with SessionLocal() as db:
