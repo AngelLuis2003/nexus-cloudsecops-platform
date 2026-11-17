@@ -1,4 +1,4 @@
-
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import text
 
-from app.database import SessionLocal, initialize_database
+from app.database import SessionLocal, engine, initialize_database
 from app.routers.assets import router as assets_router, seed_assets
 from app.routers.vulnerabilities import (
     router as vulnerabilities_router,
@@ -18,9 +19,19 @@ from app.routers.incidents import router as incidents_router, seed_incidents
 from app.routers.compliance import router as compliance_router, seed_compliance
 
 
+logger = logging.getLogger("nexus.database")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_database()
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+    logger.info(
+        "Database connectivity check passed (dialect=%s)",
+        engine.dialect.name,
+    )
+
     with SessionLocal() as db:
         seed_assets(db)
         seed_incidents(db)
