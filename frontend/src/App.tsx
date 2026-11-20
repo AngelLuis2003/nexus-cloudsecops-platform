@@ -101,6 +101,8 @@ function App() {
   const [correlatedRisks, setCorrelatedRisks] = useState<RiskEngineResponse | null>(null);
   const [riskCases, setRiskCases] = useState<RiskCase[]>([]);
   const [riskCaseUpdateError, setRiskCaseUpdateError] = useState("");
+  const [riskCaseCreateError, setRiskCaseCreateError] = useState("");
+  const [creatingRiskCaseFor, setCreatingRiskCaseFor] = useState("");
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState("");
   const [incidentSearch, setIncidentSearch] = useState("");
@@ -261,6 +263,33 @@ function App() {
     }
   };
 
+  const createRiskCase = async (risk: CorrelatedRisk) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    setRiskCaseCreateError("");
+    setCreatingRiskCaseFor(risk.asset_id);
+    try {
+      const response = await fetch(apiBaseUrl + "/api/v1/risk-cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          asset_id: risk.asset_id,
+          owner: "Security Team",
+          treatment_plan: [
+            "Risk treatment actions:",
+            ...risk.recommended_actions.map(action => "- " + action),
+            "Validation: verify remediation effectiveness and document the resulting risk reduction."
+          ].join("\n")
+        })
+      });
+      if (!response.ok) throw new Error("Risk case creation failed (" + response.status + ")");
+      const created: RiskCase = await response.json();
+      setRiskCases(current => [created, ...current]);
+    } catch (error) {
+      setRiskCaseCreateError(error instanceof Error ? error.message : "Unable to create risk treatment case");
+    } finally {
+      setCreatingRiskCaseFor("");
+    }
+  };
   const updateRiskCase = async (id: string, updates: Partial<Pick<RiskCase, "status" | "owner" | "treatment_plan" | "analyst_notes">>) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
     setRiskCaseUpdateError("");
@@ -595,6 +624,14 @@ function App() {
                                 <span>{item.public_exposure ? "Publicly exposed" : "Not publicly exposed"}</span>
                                 <span>{item.vulnerability_count} vulnerabilities</span>
                                 <span>{item.threat_count} threats</span>
+                              </div>                              <div className="risk-case-create-row">
+                                {riskCases.some(riskCase => riskCase.asset_id === item.asset_id) ? (
+                                  <span className="risk-case-existing"><CheckCircle2 size={14}/> Treatment case already exists for this asset</span>
+                                ) : (
+                                  <button className="subtle-button" onClick={() => void createRiskCase(item)} disabled={creatingRiskCaseFor === item.asset_id}>
+                                    {creatingRiskCaseFor === item.asset_id ? "Creating treatment case..." : "Create treatment case"}
+                                  </button>
+                                )}
                               </div>
                               <details className="correlated-risk-details">
                                 <summary>View risk factors and recommended actions</summary>
@@ -619,6 +656,7 @@ function App() {
                       <span className="risk-engine-status"><i/> {riskCases.length} CASES</span>
                     </div>
                     {riskCaseUpdateError && <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Case update failed</b><small>{riskCaseUpdateError}</small></div></div>}
+                    {riskCaseCreateError && <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Case creation failed</b><small>{riskCaseCreateError}</small></div></div>}
                     {riskCases.length === 0 ? (
                       <div className="inventory-state">No risk treatment cases have been created yet.</div>
                     ) : (
