@@ -322,3 +322,31 @@ body{zoom:1.12}
 .risk-case-management-panel .correlated-risk-detail-grid li small { display: block; color: #8494a8; margin-top: 4px; }
 .risk-case-management-panel .correlated-risk-detail-grid > div > p { color: #b8c5d4; line-height: 1.6; }
 @media (max-width: 640px) { .risk-case-controls { align-items: stretch; flex-direction: column; } .risk-case-controls select, .risk-case-controls input { width: 100%; } }
+
+
+/* Risk case owner editor — match the NEXUS dark interface */
+.risk-case-controls .risk-case-control input {
+  width: 240px;
+  min-height: 39px;
+  padding: 9px 12px;
+  border: 1px solid #293b51;
+  border-radius: 5px;
+  background: #0b1523;
+  color: #dce8f5;
+  font: 12px 'DM Sans', sans-serif;
+  outline: none;
+  box-shadow: inset 0 1px 2px #0003;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.risk-case-controls .risk-case-control input:hover {
+  border-color: #36516b;
+  background: #0d1928;
+}
+.risk-case-controls .risk-case-control input:focus {
+  border-color: #258da7;
+  background: #0d1928;
+  box-shadow: 0 0 0 3px #21c7e812;
+}
+.risk-case-controls .risk-case-control input::placeholder {
+  color: #657990;
+}
