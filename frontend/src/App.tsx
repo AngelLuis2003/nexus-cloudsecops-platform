@@ -611,18 +611,36 @@ function App() {
                               <span>{item.activity.length} activity events</span>
                             </div>
                             <div className="risk-case-controls">
-                              <label htmlFor={`risk-status-${item.id}`}>CASE STATUS</label>
-                              <select
-                                id={`risk-status-${item.id}`}
-                                value={item.status}
-                                onChange={event => updateRiskCase(item.id, { status: event.target.value as RiskCase["status"] })}
-                              >
-                                <option>Open</option>
-                                <option>In Progress</option>
-                                <option>Mitigated</option>
-                                <option>Accepted</option>
-                                <option>Closed</option>
-                              </select>
+                              <div className="risk-case-control">
+                                <label htmlFor={`risk-status-${item.id}`}>CASE STATUS</label>
+                                <select
+                                  id={`risk-status-${item.id}`}
+                                  value={item.status}
+                                  onChange={event => updateRiskCase(item.id, { status: event.target.value as RiskCase["status"] })}
+                                >
+                                  <option>Open</option>
+                                  <option>In Progress</option>
+                                  <option>Mitigated</option>
+                                  <option>Accepted</option>
+                                  <option>Closed</option>
+                                </select>
+                              </div>
+                              <div className="risk-case-control">
+                                <label htmlFor={`risk-owner-${item.id}`}>CASE OWNER</label>
+                                <input
+                                  id={`risk-owner-${item.id}`}
+                                  type="text"
+                                  defaultValue={item.owner}
+                                  aria-label="Case owner"
+                                  onBlur={event => {
+                                    const owner = event.currentTarget.value.trim();
+                                    if (owner && owner !== item.owner) void updateRiskCase(item.id, { owner });
+                                  }}
+                                  onKeyDown={event => {
+                                    if (event.key === "Enter") event.currentTarget.blur();
+                                  }}
+                                />
+                              </div>
                             </div>
                             <details className="correlated-risk-details">
                               <summary>View treatment plan and activity history</summary>
