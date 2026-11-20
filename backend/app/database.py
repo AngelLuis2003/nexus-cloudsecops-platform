@@ -1,6 +1,8 @@
 import os
+from datetime import datetime
+from uuid import uuid4
 
-from sqlalchemy import JSON, String, create_engine
+from sqlalchemy import JSON, Boolean, DateTime, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -15,6 +17,17 @@ class StoredRecord(Base):
     module: Mapped[str] = mapped_column(String(40), primary_key=True)
     record_id: Mapped[str] = mapped_column(String(80), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
+class User(Base):
+    __tablename__ = "nexus_users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(30), nullable=False, default="analyst")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 def _database_url() -> str:
