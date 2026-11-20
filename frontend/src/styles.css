@@ -314,9 +314,11 @@ body{zoom:1.12}
 /* Risk case management */
 .risk-case-management-panel .correlated-risk-list { display: grid; gap: 14px; }
 .risk-case-management-panel .correlated-risk-item { padding: 18px; }
-.risk-case-controls { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.risk-case-controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px 18px; margin-top: 16px; }
+.risk-case-control { display: flex; flex-direction: column; gap: 7px; }
 .risk-case-controls label { color: var(--muted, #8795a8); font-size: 10px; font-weight: 700; letter-spacing: .1em; }
-.risk-case-controls select { min-width: 170px; border: 1px solid rgba(120,145,170,.28); border-radius: 8px; background: #101b2a; color: #e8f0f8; padding: 9px 12px; font: inherit; font-size: 12px; }
+.risk-case-controls select, .risk-case-controls input { min-width: 170px; border: 1px solid rgba(120,145,170,.28); border-radius: 8px; background: #101b2a; color: #e8f0f8; padding: 9px 12px; font: inherit; font-size: 12px; }
+.risk-case-controls input { width: 220px; }
 .risk-case-management-panel .correlated-risk-detail-grid li small { display: block; color: #8494a8; margin-top: 4px; }
 .risk-case-management-panel .correlated-risk-detail-grid > div > p { color: #b8c5d4; line-height: 1.6; }
-@media (max-width: 640px) { .risk-case-controls { align-items: flex-start; flex-direction: column; } .risk-case-controls select { width: 100%; } }
+@media (max-width: 640px) { .risk-case-controls { align-items: stretch; flex-direction: column; } .risk-case-controls select, .risk-case-controls input { width: 100%; } }
