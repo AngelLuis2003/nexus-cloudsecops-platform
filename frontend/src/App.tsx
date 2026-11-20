@@ -669,45 +669,51 @@ function App() {
                                 )}
                               </div>
                               {riskCaseTransition?.id === item.id && (
-                              <div className="risk-case-justification">
-                                <div>
-                                  <b>{riskCaseTransition.status} justification required</b>
-                                  <p>{riskCaseTransition.status === "Mitigated"
-                                    ? "Describe the evidence confirming that remediation was completed and verified."
-                                    : riskCaseTransition.status === "Accepted"
-                                      ? "Document who authorized the risk acceptance, why it is being accepted, and any conditions."
-                                      : "Explain why this case is being closed. The case must already be Mitigated or Accepted."}</p>
-                                </div>
-                                {riskCaseTransition.status === "Closed" && !["Mitigated", "Accepted"].includes(item.status) ? (
-                                  <div className="risk-case-justification-warning">This case must first be Mitigated or Accepted before it can be closed.</div>
-                                ) : (
-                                  <>
-                                    <textarea
-                                      rows={3}
-                                      value={riskCaseTransition.reason}
-                                      onChange={event => setRiskCaseTransition(current => current ? { ...current, reason: event.target.value } : current)}
-                                      placeholder="Enter a justification (at least 10 characters)..."
-                                      aria-label={riskCaseTransition.status + " justification"}
-                                    />
-                                    <small>{riskCaseTransition.reason.trim().length}/10 minimum characters</small>
-                                  </>
-                                )}
-                                <div className="risk-case-justification-actions">
-                                  <button className="subtle-button" onClick={() => setRiskCaseTransition(null)}>Cancel</button>
-                                  {!(riskCaseTransition.status === "Closed" && !["Mitigated", "Accepted"].includes(item.status)) && (
-                                    <button
-                                      className="primary-button"
-                                      disabled={riskCaseTransition.reason.trim().length < 10}
-                                      onClick={() => {
-                                        const { status: nextStatus, reason } = riskCaseTransition;
-                                        void updateRiskCase(item.id, { status: nextStatus, reason: reason.trim() });
-                                        setRiskCaseTransition(null);
-                                      }}
-                                    >Confirm status change</button>
+                                <section className="risk-evidence-workspace" aria-label="Risk status evidence">
+                                  <div className="risk-evidence-heading">
+                                    <div className="risk-evidence-icon"><ShieldCheck size={17} /></div>
+                                    <div className="risk-evidence-heading-copy">
+                                      <span className="risk-evidence-kicker">NEXUS <i /> RISK GOVERNANCE</span>
+                                      <h4>{riskCaseTransition.status === "Mitigated" ? "Mitigation evidence" : riskCaseTransition.status === "Accepted" ? "Risk acceptance record" : "Case closure record"}</h4>
+                                      <p>{riskCaseTransition.status === "Mitigated"
+                                        ? "Record the verification evidence before this risk can be marked as mitigated."
+                                        : riskCaseTransition.status === "Accepted"
+                                          ? "Record the authorization and rationale for accepting this risk."
+                                          : "Provide the closure rationale for this treatment case."}</p>
+                                    </div>
+                                    <span className="risk-evidence-required">REQUIRED</span>
+                                  </div>
+                                  {riskCaseTransition.status === "Closed" && !["Mitigated", "Accepted"].includes(item.status) ? (
+                                    <div className="risk-evidence-warning"><AlertTriangle size={15} /><span><b>Closure unavailable</b>This case must first reach Mitigated or Accepted status.</span></div>
+                                  ) : (
+                                    <div className="risk-evidence-field">
+                                      <label htmlFor={`risk-evidence-${item.id}`}>{riskCaseTransition.status === "Mitigated" ? "VERIFICATION EVIDENCE" : riskCaseTransition.status === "Accepted" ? "APPROVAL & ACCEPTANCE RATIONALE" : "CLOSURE JUSTIFICATION"}</label>
+                                      <textarea
+                                        id={`risk-evidence-${item.id}`}
+                                        rows={3}
+                                        value={riskCaseTransition.reason}
+                                        onChange={event => setRiskCaseTransition(current => current ? { ...current, reason: event.target.value } : current)}
+                                        placeholder={riskCaseTransition.status === "Mitigated" ? "Describe the control, patch, or validation performed and the evidence reviewed..." : riskCaseTransition.status === "Accepted" ? "Identify the approver, business rationale, and any conditions or review date..." : "Summarize the final review and reason for closing this case..."}
+                                        aria-label={riskCaseTransition.status + " evidence"}
+                                      />
+                                      <div className="risk-evidence-field-meta"><span>Minimum 10 characters · Include specific, reviewable details</span><b className={riskCaseTransition.reason.trim().length >= 10 ? "is-valid" : ""}>{riskCaseTransition.reason.trim().length} / 10</b></div>
+                                    </div>
                                   )}
-                                </div>
-                              </div>
-                            )}
+                                  <div className="risk-evidence-footer">
+                                    <span><LockKeyhole size={12} /> Recorded in case activity history</span>
+                                    <div className="risk-evidence-actions">
+                                      <button className="subtle-button" onClick={() => setRiskCaseTransition(null)}>Cancel</button>
+                                      {!(riskCaseTransition.status === "Closed" && !["Mitigated", "Accepted"].includes(item.status)) && (
+                                        <button className="primary-button risk-evidence-confirm" disabled={riskCaseTransition.reason.trim().length < 10} onClick={() => {
+                                          const { status: nextStatus, reason } = riskCaseTransition;
+                                          void updateRiskCase(item.id, { status: nextStatus, reason: reason.trim() });
+                                          setRiskCaseTransition(null);
+                                        }}>Save evidence & update status <ArrowUpRight size={13} /></button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </section>
+                              )}
                             <details className="correlated-risk-details">
                                 <summary>View risk factors and recommended actions</summary>
                                 <div className="correlated-risk-detail-grid">
