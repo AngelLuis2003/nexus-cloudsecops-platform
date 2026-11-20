@@ -1,7 +1,7 @@
-
 from datetime import datetime, timezone
+from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,6 +24,10 @@ class ThreatDetection(BaseModel):
     status: str
     detected_at: str
     evidence: str
+
+
+class ThreatStatusUpdate(BaseModel):
+    status: Literal["New", "Investigating", "Resolved", "False Positive"]
 
 
 # Deterministic sample telemetry. These records are not collected from AWS.
@@ -116,3 +120,24 @@ def list_threat_detections(
         ThreatDetection.model_validate(row.payload)
         for row in sorted(rows, key=lambda row: row.record_id)
     ]
+
+
+@router.patch("/{detection_id}", response_model=ThreatDetection)
+def update_threat_status(
+    detection_id: str,
+    payload: ThreatStatusUpdate,
+    db: Session = Depends(get_db),
+) -> ThreatDetection:
+    """Persist an analyst-reviewed threat detection lifecycle status."""
+    row = db.get(StoredRecord, {"module": "threats", "record_id": detection_id})
+    if row is None:
+        raise HTTPException(status_code=404, detail="Threat detection not found")
+
+    updated_data = dict(row.payload)
+    if updated_data.get("status") != payload.status:
+        updated_data["status"] = payload.status
+        row.payload = updated_data
+        db.commit()
+        db.refresh(row)
+
+    return ThreatDetection.model_validate(row.payload)
