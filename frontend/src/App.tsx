@@ -102,6 +102,7 @@ function App() {
   const [riskCases, setRiskCases] = useState<RiskCase[]>([]);
   const [riskCaseUpdateError, setRiskCaseUpdateError] = useState("");
   const [riskCaseSearch, setRiskCaseSearch] = useState("");
+  const [riskAssetSearch, setRiskAssetSearch] = useState("");
   const [riskCaseCreateError, setRiskCaseCreateError] = useState("");
   const [creatingRiskCaseFor, setCreatingRiskCaseFor] = useState("");
   const [riskCaseDraft, setRiskCaseDraft] = useState<CorrelatedRisk | null>(null);
@@ -417,6 +418,11 @@ function App() {
       .join(" ").toLowerCase().includes(riskCaseSearch.trim().toLowerCase())
   );
 
+  const filteredCorrelatedRisks = (correlatedRisks?.risks ?? []).filter((item) =>
+    [item.asset_id, item.asset_name, item.resource_type, item.environment, item.criticality, item.risk_level]
+      .join(" ").toLowerCase().includes(riskAssetSearch.trim().toLowerCase())
+  );
+
   const filteredAssets = assets.filter((asset) =>
     [asset.id, asset.name, asset.resource_type, asset.provider, asset.region, asset.environment, asset.status, asset.criticality]
       .join(" ").toLowerCase().includes(assetSearch.toLowerCase())
@@ -630,8 +636,9 @@ function App() {
                           <div><strong>{correlatedRisks.total_active_threats}</strong><span>ACTIVE THREATS</span></div>
                           <div><strong>{correlatedRisks.risks.filter(item => item.risk_level.toLowerCase() === "critical" || item.risk_level.toLowerCase() === "high").length}</strong><span>HIGH / CRITICAL RISKS</span></div>
                         </div>
-                        <div className="correlated-risk-list">
-                          {correlatedRisks.risks.map(item => (
+                        <div className="inventory-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search correlated asset risks" placeholder="Search by asset name, asset ID, type or environment..." value={riskAssetSearch} onChange={event => setRiskAssetSearch(event.target.value)}/></div><span className="inventory-count">{filteredCorrelatedRisks.length} OF {correlatedRisks.risks.length} ASSETS</span></div>
+                        {filteredCorrelatedRisks.length === 0 ? <div className="inventory-state">No assets match your search.</div> : <div className="correlated-risk-list">
+                          {filteredCorrelatedRisks.map(item => (
                             <article className="correlated-risk-item" key={item.asset_id}>
                               <div className="correlated-risk-main">
                                 <div className="correlated-risk-identity">
@@ -669,7 +676,7 @@ function App() {
                               </details>
                             </article>
                           ))}
-                        </div>
+                        </div>}
                         <div className="correlated-risk-notice">{correlatedRisks.notice}</div>
                         <div className="inventory-footnote"><span><i className="live-dot"/> LIVE API · RISK CORRELATION ENGINE</span><span>CALCULATED {new Date(correlatedRisks.generated_at).toLocaleString()}</span></div>
                       </>
