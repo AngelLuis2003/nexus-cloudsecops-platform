@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from app.database import User, get_db
-from app.security import create_access_token, verify_password
+from app.security import create_access_token, get_current_user, verify_password
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
@@ -49,7 +49,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 
 
 @router.get("/me", response_model=UserResponse)
-def current_user(user: User = Depends(__import__("app.security", fromlist=["get_current_user"]).get_current_user)) -> UserResponse:
+def current_user(user: User = Depends(get_current_user)) -> UserResponse:
     return UserResponse(
         id=user.id,
         email=user.email,
