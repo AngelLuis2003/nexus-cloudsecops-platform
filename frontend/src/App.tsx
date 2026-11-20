@@ -101,6 +101,7 @@ function App() {
   const [correlatedRisks, setCorrelatedRisks] = useState<RiskEngineResponse | null>(null);
   const [riskCases, setRiskCases] = useState<RiskCase[]>([]);
   const [riskCaseUpdateError, setRiskCaseUpdateError] = useState("");
+  const [riskCaseSearch, setRiskCaseSearch] = useState("");
   const [riskCaseCreateError, setRiskCaseCreateError] = useState("");
   const [creatingRiskCaseFor, setCreatingRiskCaseFor] = useState("");
   const [riskCaseDraft, setRiskCaseDraft] = useState<CorrelatedRisk | null>(null);
@@ -407,7 +408,13 @@ function App() {
   );
 
   const filteredVulnerabilities = vulnerabilities.filter((v) =>
-    [v.id, v.cve, v.title, v.severity, v.asset_name, v.package, v.status].join(" ").toLowerCase().includes(vulnSearch.toLowerCase())
+    [v.id, v.cve, v.title, v.severity, v.asset_id, v.asset_name, v.package, v.current_version, v.fixed_version, v.status, v.description]
+      .join(" ").toLowerCase().includes(vulnSearch.trim().toLowerCase())
+  );
+
+  const filteredRiskCases = riskCases.filter((item) =>
+    [item.id, item.asset_id, item.asset_name, item.title, item.owner, item.status, item.risk_level, item.treatment_plan, item.analyst_notes]
+      .join(" ").toLowerCase().includes(riskCaseSearch.trim().toLowerCase())
   );
 
   const filteredAssets = assets.filter((asset) =>
@@ -675,13 +682,16 @@ function App() {
                       <div><h3>Risk case management</h3><p>Persistent treatment cases retrieved from the NEXUS API</p></div>
                       <span className="risk-engine-status"><i/> {riskCases.length} CASES</span>
                     </div>
+                    <div className="inventory-toolbar risk-case-search-toolbar"><div className="inventory-search"><Search size={15}/><input aria-label="Search risk treatment cases" placeholder="Search by case ID, asset, owner, status or treatment plan..." value={riskCaseSearch} onChange={event => setRiskCaseSearch(event.target.value)}/></div><span className="inventory-count">{filteredRiskCases.length} OF {riskCases.length} CASES</span></div>
                     {riskCaseUpdateError && <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Case update failed</b><small>{riskCaseUpdateError}</small></div></div>}
                     {riskCaseCreateError && <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Case creation failed</b><small>{riskCaseCreateError}</small></div></div>}
                     {riskCases.length === 0 ? (
                       <div className="inventory-state">No risk treatment cases have been created yet.</div>
+                    ) : filteredRiskCases.length === 0 ? (
+                      <div className="inventory-state">No risk cases match your search.</div>
                     ) : (
                       <div className="correlated-risk-list">
-                        {riskCases.map(item => (
+                        {filteredRiskCases.map(item => (
                           <article className="correlated-risk-item" id={"risk-case-" + item.id} key={item.id}>
                             <div className="correlated-risk-main">
                               <div className="correlated-risk-identity">
