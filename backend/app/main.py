@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.database import SessionLocal, engine, initialize_database
+from app.routers.auth import bootstrap_admin, router as auth_router
 from app.routers.assets import router as assets_router, seed_assets
 from app.routers.vulnerabilities import (
     router as vulnerabilities_router,
@@ -36,6 +37,7 @@ async def lifespan(app: FastAPI):
     )
 
     with SessionLocal() as db:
+        bootstrap_admin(db)
         seed_assets(db)
         seed_incidents(db)
         seed_compliance(db)
@@ -66,6 +68,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(assets_router)
 app.include_router(vulnerabilities_router)
 app.include_router(threats_router)
