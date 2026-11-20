@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import StoredRecord, get_db
+from app.routers.risk_case_activity import append_risk_case_activity
 
 router = APIRouter(
     prefix="/api/v1/vulnerabilities",
@@ -94,9 +95,16 @@ def update_vulnerability_status(
         raise HTTPException(status_code=404, detail="Vulnerability finding not found")
 
     updated_data = dict(row.payload)
-    if updated_data.get("status") != payload.status:
+    previous_status = updated_data.get("status")
+    if previous_status != payload.status:
         updated_data["status"] = payload.status
         row.payload = updated_data
+        append_risk_case_activity(
+            db,
+            str(updated_data.get("asset_id", "")),
+            "Vulnerability status updated",
+            f'{finding_id} — {updated_data.get("title", "Vulnerability")}: {previous_status} → {payload.status}',
+        )
         db.commit()
         db.refresh(row)
 
