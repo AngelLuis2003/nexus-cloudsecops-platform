@@ -27,6 +27,7 @@ class RiskCaseUpdate(BaseModel):
     owner: str | None = Field(default=None, min_length=2, max_length=80)
     treatment_plan: str | None = Field(default=None, max_length=2000)
     analyst_notes: str | None = Field(default=None, max_length=2000)
+    reason: str | None = Field(default=None, min_length=10, max_length=1000)
 
 
 class RiskCase(BaseModel):
@@ -144,10 +145,19 @@ def update_risk_case(
 
     case = RiskCase.model_validate(row.payload)
     updates = payload.model_dump(exclude_unset=True)
+    reason = updates.pop("reason", None)
     changes = {
         key: value for key, value in updates.items()
         if value is not None and getattr(case, key) != value
     }
+    if "status" in changes:
+        target_status = changes["status"]
+        if target_status in {"Mitigated", "Accepted", "Closed"} and not (reason and reason.strip()):
+            raise HTTPException(status_code=422, detail=f"A documented justification is required before moving a case to {target_status}.")
+        if target_status == "Closed" and case.status not in {"Mitigated", "Accepted"}:
+            raise HTTPException(status_code=409, detail="A case can only be closed after it has been Mitigated or Accepted.")
+        if target_status == "Mitigated" and len(reason.strip()) < 10:
+            raise HTTPException(status_code=422, detail="Mitigation evidence must contain at least 10 characters.")
     if not changes:
         return case
 
@@ -156,9 +166,12 @@ def update_risk_case(
     updated_data.update(changes)
     activity = list(case.activity)
     for key, value in changes.items():
+        details = f"Changed to: {value}"
+        if key == "status" and reason and reason.strip():
+            details += f" | Justification: {reason.strip()}"
         activity.append({
             "event": f"{key.replace('_', ' ').title()} updated",
-            "details": f"Changed to: {value}",
+            "details": details,
             "timestamp": now.isoformat(),
         })
     updated_data["activity"] = activity
