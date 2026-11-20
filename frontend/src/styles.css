@@ -378,3 +378,27 @@ body{zoom:1.12}
   box-shadow: 0 0 0 3px #21c7e812;
 }
 .risk-case-editable-details textarea::placeholder { color: #657990; }
+
+
+/* Analyst-driven risk case creation modal */
+.risk-case-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 22px; background: rgba(2, 8, 16, .78); backdrop-filter: blur(7px); }
+.risk-case-modal { width: min(720px, 100%); max-height: min(90vh, 900px); overflow-y: auto; padding: 26px; border: 1px solid #263b51; border-radius: 12px; background: linear-gradient(145deg, #111e2e, #0b1421 70%); color: #e5eef8; box-shadow: 0 24px 90px #0009; }
+.risk-case-modal-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 22px; }
+.risk-case-modal-heading h2 { margin: 7px 0 5px; font-size: 22px; color: #f1f6fb; }
+.risk-case-modal-heading p { margin: 0; color: #91a2b7; font-size: 12px; line-height: 1.6; }
+.risk-case-modal-close { width: 34px; height: 34px; border: 1px solid #2b4058; border-radius: 7px; background: #101d2c; color: #aebed0; font-size: 24px; cursor: pointer; }
+.risk-case-context { display: grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap: 10px; margin-bottom: 22px; }
+.risk-case-context > div { min-width: 0; padding: 13px; border: 1px solid #24384e; border-radius: 7px; background: #0b1725; display: flex; flex-direction: column; gap: 5px; }
+.risk-case-context small, .risk-case-form-fields label { color: #8498ae; font-size: 10px; font-weight: 700; letter-spacing: .1em; }
+.risk-case-context strong { color: #e7f1fb; font-size: 13px; overflow-wrap: anywhere; }
+.risk-case-context span { color: #91a2b7; font-size: 11px; }
+.risk-case-form-fields { display: grid; gap: 16px; }
+.risk-case-form-fields label { display: grid; gap: 8px; }
+.risk-case-form-fields input, .risk-case-form-fields textarea { width: 100%; box-sizing: border-box; border: 1px solid #293f57; border-radius: 6px; padding: 11px 12px; background: #091523; color: #e3edf8; font: 12px/1.6 'DM Sans', sans-serif; outline: none; resize: vertical; }
+.risk-case-form-fields input:focus, .risk-case-form-fields textarea:focus { border-color: #258da7; box-shadow: 0 0 0 3px #21c7e812; }
+.risk-case-form-fields input::placeholder, .risk-case-form-fields textarea::placeholder { color: #63788f; }
+.optional-label { color: #60758c; font-size: 9px; margin-left: 5px; }
+.risk-case-form-error { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: #ff9b9b; font-size: 12px; }
+.risk-case-modal-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 22px; padding-top: 17px; border-top: 1px solid #24364a; }
+.primary-risk-action { border-color: #177e99 !important; background: linear-gradient(135deg, #087b98, #12617e) !important; color: #f3fbff !important; }
+@media (max-width: 640px) { .risk-case-modal { padding: 18px; } .risk-case-context { grid-template-columns: 1fr; } .risk-case-modal-backdrop { padding: 10px; } }
