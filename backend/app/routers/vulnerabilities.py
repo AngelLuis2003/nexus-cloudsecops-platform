@@ -1,5 +1,6 @@
+from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,6 +27,10 @@ class Vulnerability(BaseModel):
     status: str
     discovered_at: str
     description: str
+
+
+class VulnerabilityStatusUpdate(BaseModel):
+    status: Literal["Open", "In progress", "Remediated", "False Positive"]
 
 
 # Demonstration findings only; no live vulnerability scanner is connected.
@@ -75,3 +80,24 @@ def list_vulnerabilities(
         Vulnerability.model_validate(row.payload)
         for row in sorted(rows, key=lambda row: row.record_id)
     ]
+
+
+@router.patch("/{finding_id}", response_model=Vulnerability)
+def update_vulnerability_status(
+    finding_id: str,
+    payload: VulnerabilityStatusUpdate,
+    db: Session = Depends(get_db),
+) -> Vulnerability:
+    """Persist an analyst-reviewed vulnerability lifecycle status."""
+    row = db.get(StoredRecord, {"module": "vulnerabilities", "record_id": finding_id})
+    if row is None:
+        raise HTTPException(status_code=404, detail="Vulnerability finding not found")
+
+    updated_data = dict(row.payload)
+    if updated_data.get("status") != payload.status:
+        updated_data["status"] = payload.status
+        row.payload = updated_data
+        db.commit()
+        db.refresh(row)
+
+    return Vulnerability.model_validate(row.payload)
