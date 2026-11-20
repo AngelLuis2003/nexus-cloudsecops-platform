@@ -263,3 +263,49 @@ body{zoom:1.12}
   .panel{padding:11px}
   .incident-status-list{grid-template-columns:1fr 1fr}
 }
+
+
+/* Correlated Asset Risk Intelligence */
+.correlated-risk-panel{margin-bottom:16px}
+.risk-engine-status{display:inline-flex;align-items:center;gap:7px;color:#55d5ad;font:9px 'DM Mono';letter-spacing:.7px;white-space:nowrap}
+.risk-engine-status i{width:6px;height:6px;border-radius:50%;background:#39d6a2;box-shadow:0 0 9px #39d6a277}
+.correlated-risk-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:17px 0}
+.correlated-risk-summary>div{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #22364c;border-radius:5px;background:#0c1726}
+.correlated-risk-summary strong{font:600 22px 'Space Grotesk';color:#e7f2ff}
+.correlated-risk-summary span{font:8px 'DM Mono';letter-spacing:.55px;color:#7f94ac}
+.correlated-risk-list{display:grid;gap:10px}
+.correlated-risk-item{padding:14px;border:1px solid #22364c;border-radius:6px;background:#0c1726}
+.correlated-risk-main{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.correlated-risk-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.correlated-risk-identity b{display:block;color:#e2edf9;font-size:12px}
+.correlated-risk-identity small{display:block;margin-top:4px;color:#8195ac;font:9px 'DM Mono';white-space:normal}
+.correlated-risk-score{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.correlated-risk-score>strong{font:600 22px 'Space Grotesk';color:#eaf4ff}
+.correlated-risk-score>strong small{font:9px 'DM Mono';color:#758aa2;margin-left:2px}
+.correlated-risk-meter{height:6px;margin:12px 0 9px;border-radius:8px;background:#1c2b40;overflow:hidden}
+.correlated-risk-meter i{display:block;height:100%;border-radius:8px;background:#35c8e4;box-shadow:0 0 10px #35c8e433}
+.correlated-risk-meter i.critical{background:#ef7180;box-shadow:0 0 10px #ef718044}
+.correlated-risk-meter i.high{background:#e9ae5d;box-shadow:0 0 10px #e9ae5d44}
+.correlated-risk-meter i.medium{background:#35c8e4}
+.correlated-risk-meter i.low{background:#7189a8}
+.correlated-risk-meta{display:flex;flex-wrap:wrap;gap:8px 16px;color:#879bb2;font:9px 'DM Mono'}
+.correlated-risk-details{margin-top:12px;border-top:1px solid #203149;padding-top:10px}
+.correlated-risk-details summary{color:#59cde3;font-size:10px;cursor:pointer;list-style:none}
+.correlated-risk-details summary::-webkit-details-marker{display:none}
+.correlated-risk-details summary:after{content:"+";float:right;color:#59cde3;font:14px 'DM Mono'}
+.correlated-risk-details[open] summary:after{content:"−"}
+.correlated-risk-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:13px}
+.correlated-risk-detail-grid>div>b{display:block;margin-bottom:9px;color:#c8d8e8;font-size:10px}
+.correlated-risk-detail-grid p{margin:0 0 9px;color:#a8b9cb;font-size:9px;line-height:1.5}
+.correlated-risk-detail-grid p span{display:flex;justify-content:space-between;gap:10px;color:#d6e4f2}
+.correlated-risk-detail-grid p span strong{color:#f0bd6d;font:10px 'DM Mono'}
+.correlated-risk-detail-grid p small{display:block;margin-top:3px;color:#8296ad;font-size:9px}
+.correlated-risk-detail-grid ul{margin:0;padding-left:17px;color:#a8b9cb;font-size:9px;line-height:1.7}
+.correlated-risk-notice{margin-top:13px;padding:9px 11px;border:1px solid #3b3540;border-radius:5px;background:#171c28;color:#9baabd;font-size:9px;line-height:1.5}
+@media(max-width:760px){
+  .correlated-risk-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .correlated-risk-main{align-items:flex-start}
+  .correlated-risk-score{align-items:flex-end;flex-direction:column;gap:5px}
+  .correlated-risk-detail-grid{grid-template-columns:1fr;gap:12px}
+  .correlated-risk-meta{gap:7px 11px}
+}
