@@ -20,6 +20,7 @@ from app.routers.compliance import router as compliance_router, seed_compliance
 from app.routers.risk_correlation import (
     router as risk_correlation_router,
 )
+from app.routers.risk_management import router as risk_management_router
 
 
 @asynccontextmanager
@@ -71,6 +72,7 @@ app.include_router(threats_router)
 app.include_router(incidents_router)
 app.include_router(compliance_router)
 app.include_router(risk_correlation_router)
+app.include_router(risk_management_router)
 
 
 class HealthResponse(BaseModel):
