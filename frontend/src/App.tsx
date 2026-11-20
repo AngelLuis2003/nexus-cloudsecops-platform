@@ -278,6 +278,36 @@ function App() {
     }
   };
 
+  const updateVulnerabilityStatus = async (id: string, status: Vulnerability["status"]) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/vulnerabilities/${encodeURIComponent(id)}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status })
+      });
+      if (!response.ok) throw new Error(`Vulnerability update failed (${response.status})`);
+      const updated: Vulnerability = await response.json();
+      setVulnerabilities(current => current.map(item => item.id === id ? updated : item));
+      setRiskRefresh(value => value + 1);
+    } catch (error) {
+      setVulnError(error instanceof Error ? error.message : "Unable to update vulnerability status");
+    }
+  };
+
+  const updateThreatStatus = async (id: string, status: ThreatDetection["status"]) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/threats/${encodeURIComponent(id)}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status })
+      });
+      if (!response.ok) throw new Error(`Threat status update failed (${response.status})`);
+      const updated: ThreatDetection = await response.json();
+      setThreats(current => current.map(item => item.id === id ? updated : item));
+      setRiskRefresh(value => value + 1);
+    } catch (error) {
+      setThreatError(error instanceof Error ? error.message : "Unable to update threat status");
+    }
+  };
+
   const updateIncident = async (id: string, updates: Partial<Incident>) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
     try {
@@ -406,7 +436,7 @@ function App() {
                 {vulnLoading ? <div className="inventory-state"><span className="loader-dot"/> Loading vulnerability findings from API...</div> :
                   vulnError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load findings</b><small>{vulnError}. Check the API deployment and try again.</small></div><button className="subtle-button" onClick={() => setVulnRefresh(v => v + 1)}>Retry</button></div> :
                   filteredVulnerabilities.length === 0 ? <div className="inventory-state">No findings match your search.</div> :
-                  <div className="table-wrap"><table className="asset-table vuln-table"><thead><tr><th>VULNERABILITY</th><th>SEVERITY / CVSS</th><th>AFFECTED ASSET</th><th>PACKAGE</th><th>VERSION</th><th>REMEDIATION</th></tr></thead><tbody>{filteredVulnerabilities.map(v => <tr key={v.id}><td><div className="asset-identity"><span className="asset-symbol vuln-symbol"><ShieldAlert size={15}/></span><div><b>{v.title}</b><small>{v.cve} · {v.id}</small></div></div></td><td><span className={`severity ${v.severity.toLowerCase()}`}>{v.severity}</span><div className="cvss-score">{v.cvss.toFixed(1)} CVSS</div></td><td><div className="provider-cell">{v.asset_name}<small>{v.asset_id}</small></div></td><td>{v.package}</td><td><div className="provider-cell">{v.current_version}<small>Fixed: {v.fixed_version}</small></div></td><td><span className={`remediation-status ${v.status.toLowerCase().replace(" ", "-")}`}><i/>{v.status}</span></td></tr>)}</tbody></table></div>}
+                  <div className="table-wrap"><table className="asset-table vuln-table"><thead><tr><th>VULNERABILITY</th><th>SEVERITY / CVSS</th><th>AFFECTED ASSET</th><th>PACKAGE</th><th>VERSION</th><th>REMEDIATION</th></tr></thead><tbody>{filteredVulnerabilities.map(v => <tr key={v.id}><td><div className="asset-identity"><span className="asset-symbol vuln-symbol"><ShieldAlert size={15}/></span><div><b>{v.title}</b><small>{v.cve} · {v.id}</small></div></div></td><td><span className={`severity ${v.severity.toLowerCase()}`}>{v.severity}</span><div className="cvss-score">{v.cvss.toFixed(1)} CVSS</div></td><td><div className="provider-cell">{v.asset_name}<small>{v.asset_id}</small></div></td><td>{v.package}</td><td><div className="provider-cell">{v.current_version}<small>Fixed: {v.fixed_version}</small></div></td><td><select className={`incident-select status-select ${v.status.toLowerCase().replace(" ", "-")}`} aria-label={`Update remediation status ${v.id}`} value={v.status} onChange={event => updateVulnerabilityStatus(v.id, event.target.value)}><option>Open</option><option>In progress</option><option>Remediated</option><option>False Positive</option></select></td></tr>)}</tbody></table></div>}
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED</span><span>DEMO SECURITY FINDINGS · NO LIVE SCANNER CONNECTED</span></div>
               </section>
             </section>
@@ -497,7 +527,7 @@ function App() {
                 {threatLoading ? <div className="inventory-state"><span className="loader-dot"/> Evaluating sample telemetry against detection rules...</div> :
                   threatError ? <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Unable to load detections</b><small>{threatError}. Check the API deployment and try again.</small></div><button className="subtle-button" onClick={() => setThreatRefresh(v => v + 1)}>Retry</button></div> :
                   filteredThreats.length === 0 ? <div className="inventory-state">No detections match your search.</div> :
-                  <div className="table-wrap"><table className="asset-table threat-table"><thead><tr><th>DETECTION</th><th>SEVERITY</th><th>AFFECTED ASSET</th><th>RULE / EVENT</th><th>EVIDENCE</th><th>STATUS</th></tr></thead><tbody>{filteredThreats.map(t => <tr key={t.id}><td><div className="asset-identity"><span className="asset-symbol threat-symbol"><Radar size={15}/></span><div><b>{t.title}</b><small>{t.id} · {new Date(t.detected_at).toLocaleString()}</small></div></div></td><td><span className={`severity ${t.severity.toLowerCase()}`}>{t.severity}</span></td><td><div className="provider-cell">{t.asset_name}<small>{t.asset_id}</small></div></td><td><div className="provider-cell">{t.rule_id}<small>{t.event_type}</small></div></td><td className="evidence-cell">{t.evidence}</td><td><span className="remediation-status in-progress"><i/>{t.status}</span></td></tr>)}</tbody></table></div>}
+                  <div className="table-wrap"><table className="asset-table threat-table"><thead><tr><th>DETECTION</th><th>SEVERITY</th><th>AFFECTED ASSET</th><th>RULE / EVENT</th><th>EVIDENCE</th><th>STATUS</th></tr></thead><tbody>{filteredThreats.map(t => <tr key={t.id}><td><div className="asset-identity"><span className="asset-symbol threat-symbol"><Radar size={15}/></span><div><b>{t.title}</b><small>{t.id} · {new Date(t.detected_at).toLocaleString()}</small></div></div></td><td><span className={`severity ${t.severity.toLowerCase()}`}>{t.severity}</span></td><td><div className="provider-cell">{t.asset_name}<small>{t.asset_id}</small></div></td><td><div className="provider-cell">{t.rule_id}<small>{t.event_type}</small></div></td><td className="evidence-cell">{t.evidence}</td><td><select className={`incident-select status-select ${t.status.toLowerCase().replace(" ", "-")}`} aria-label={`Update detection status ${t.id}`} value={t.status} onChange={event => updateThreatStatus(t.id, event.target.value)}><option>New</option><option>Investigating</option><option>Resolved</option><option>False Positive</option></select></td></tr>)}</tbody></table></div>}
                 <div className="inventory-footnote"><span><i className="live-dot"/> API CONNECTED · RULE ENGINE ACTIVE</span><span>DEMO TELEMETRY · NOT LIVE AWS MONITORING</span></div>
               </section>
             </section>
