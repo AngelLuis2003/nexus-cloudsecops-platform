@@ -1,3 +1,4 @@
+
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -16,13 +17,18 @@ from app.routers.vulnerabilities import (
 from app.routers.threats import router as threats_router, seed_threats
 from app.routers.incidents import router as incidents_router, seed_incidents
 from app.routers.compliance import router as compliance_router, seed_compliance
+from app.routers.risk_correlation import (
+    router as risk_correlation_router,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_database()
+
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
+
     print(
         f"NEXUS_DATABASE_CHECK_OK dialect={engine.dialect.name}",
         flush=True,
@@ -34,6 +40,7 @@ async def lifespan(app: FastAPI):
         seed_compliance(db)
         seed_threats(db)
         seed_vulnerabilities(db)
+
     yield
 
 
@@ -63,6 +70,7 @@ app.include_router(vulnerabilities_router)
 app.include_router(threats_router)
 app.include_router(incidents_router)
 app.include_router(compliance_router)
+app.include_router(risk_correlation_router)
 
 
 class HealthResponse(BaseModel):
@@ -98,3 +106,4 @@ def overview() -> OverviewResponse:
         compliance_score=94,
         threat_level="elevated",
     )
+
