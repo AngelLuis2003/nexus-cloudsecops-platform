@@ -103,6 +103,10 @@ function App() {
   const [riskCaseUpdateError, setRiskCaseUpdateError] = useState("");
   const [riskCaseCreateError, setRiskCaseCreateError] = useState("");
   const [creatingRiskCaseFor, setCreatingRiskCaseFor] = useState("");
+  const [riskCaseDraft, setRiskCaseDraft] = useState<CorrelatedRisk | null>(null);
+  const [riskCaseOwner, setRiskCaseOwner] = useState("Security Team");
+  const [riskCasePlan, setRiskCasePlan] = useState("");
+  const [riskCaseNotes, setRiskCaseNotes] = useState("");
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState("");
   const [incidentSearch, setIncidentSearch] = useState("");
@@ -263,7 +267,21 @@ function App() {
     }
   };
 
-  const createRiskCase = async (risk: CorrelatedRisk) => {
+  const openRiskCaseForm = (risk: CorrelatedRisk) => {
+    setRiskCaseCreateError("");
+    setRiskCaseOwner("Security Team");
+    setRiskCaseNotes("");
+    setRiskCasePlan([
+      "Risk treatment actions:",
+      ...risk.recommended_actions.map(action => "- " + action),
+      "Validation: verify remediation effectiveness and document the resulting risk reduction."
+    ].join("\n"));
+    setRiskCaseDraft(risk);
+  };
+
+  const createRiskCase = async () => {
+    if (!riskCaseDraft || !riskCaseOwner.trim() || !riskCasePlan.trim()) return;
+    const risk = riskCaseDraft;
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
     setRiskCaseCreateError("");
     setCreatingRiskCaseFor(risk.asset_id);
@@ -273,17 +291,17 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           asset_id: risk.asset_id,
-          owner: "Security Team",
-          treatment_plan: [
-            "Risk treatment actions:",
-            ...risk.recommended_actions.map(action => "- " + action),
-            "Validation: verify remediation effectiveness and document the resulting risk reduction."
-          ].join("\n")
+          owner: riskCaseOwner.trim(),
+          treatment_plan: riskCasePlan.trim(),
+          analyst_notes: riskCaseNotes.trim()
         })
       });
-      if (!response.ok) throw new Error("Risk case creation failed (" + response.status + ")");
-      const created: RiskCase = await response.json();
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || "Risk case creation failed (" + response.status + ")");
+      const created: RiskCase = payload;
       setRiskCases(current => [created, ...current]);
+      setRiskCaseDraft(null);
+      setRiskCaseNotes("");
     } catch (error) {
       setRiskCaseCreateError(error instanceof Error ? error.message : "Unable to create risk treatment case");
     } finally {
@@ -626,10 +644,12 @@ function App() {
                                 <span>{item.threat_count} threats</span>
                               </div>                              <div className="risk-case-create-row">
                                 {riskCases.some(riskCase => riskCase.asset_id === item.asset_id) ? (
-                                  <span className="risk-case-existing"><CheckCircle2 size={14}/> Treatment case already exists for this asset</span>
+                                  <button className="subtle-button" onClick={() => document.getElementById("risk-case-" + riskCases.find(riskCase => riskCase.asset_id === item.asset_id)?.id)?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+                                    <CheckCircle2 size={14}/> View existing case
+                                  </button>
                                 ) : (
-                                  <button className="subtle-button" onClick={() => void createRiskCase(item)} disabled={creatingRiskCaseFor === item.asset_id}>
-                                    {creatingRiskCaseFor === item.asset_id ? "Creating treatment case..." : "Create treatment case"}
+                                  <button className="subtle-button" onClick={() => openRiskCaseForm(item)} disabled={creatingRiskCaseFor === item.asset_id}>
+                                    Create treatment case
                                   </button>
                                 )}
                               </div>
@@ -662,7 +682,7 @@ function App() {
                     ) : (
                       <div className="correlated-risk-list">
                         {riskCases.map(item => (
-                          <article className="correlated-risk-item" key={item.id}>
+                          <article className="correlated-risk-item" id={"risk-case-" + item.id} key={item.id}>
                             <div className="correlated-risk-main">
                               <div className="correlated-risk-identity">
                                 <span className="asset-symbol"><FileCheck2 size={15}/></span>
@@ -767,6 +787,33 @@ function App() {
 
           <section className="panel findings-panel"><div className="panel-heading"><div><h3>Priority findings</h3><p>Security issues requiring analyst attention</p></div><button className="text-button" onClick={() => setActive("Vulnerability management")}>View all findings <ArrowUpRight size={14}/></button></div><div className="table-wrap"><table><thead><tr><th>FINDING</th><th>AFFECTED ASSET</th><th>SEVERITY</th><th>DETECTED</th><th/></tr></thead><tbody>{findings.map((f) => <tr key={f.id}><td><div className="finding-title">{f.title}<small>{f.id}</small></div></td><td className="asset-name"><Server size={14}/>{f.asset}</td><td><span className={`severity ${f.severity.toLowerCase()}`}><i/>{f.severity}</span></td><td className="muted-cell">{f.age}</td><td><button className="row-action" aria-label={`Open finding ${f.id}`}><ArrowUpRight size={15}/></button></td></tr>)}</tbody></table></div></section>
           </>
+          )}
+          {riskCaseDraft && (
+            <div className="risk-case-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setRiskCaseDraft(null); }}>
+              <section className="risk-case-modal" role="dialog" aria-modal="true" aria-labelledby="risk-case-modal-title">
+                <div className="risk-case-modal-heading">
+                  <div><span className="eyebrow">RISK TREATMENT WORKFLOW</span><h2 id="risk-case-modal-title">Create treatment case</h2><p>Review the asset context and complete the case details before saving.</p></div>
+                  <button className="risk-case-modal-close" type="button" aria-label="Close form" onClick={() => setRiskCaseDraft(null)}>×</button>
+                </div>
+                <div className="risk-case-context">
+                  <div><small>ASSET</small><strong>{riskCaseDraft.asset_name}</strong><span>{riskCaseDraft.asset_id}</span></div>
+                  <div><small>CURRENT RISK</small><strong>{riskCaseDraft.risk_score}/100 · {riskCaseDraft.risk_level}</strong><span>{riskCaseDraft.criticality} criticality · {riskCaseDraft.public_exposure ? "Publicly exposed" : "Not publicly exposed"}</span></div>
+                  <div><small>RELATED FINDINGS</small><strong>{riskCaseDraft.vulnerability_count} vulnerabilities</strong><span>{riskCaseDraft.threat_count} active threats</span></div>
+                </div>
+                <div className="risk-case-form-fields">
+                  <label>CASE OWNER<input value={riskCaseOwner} onChange={event => setRiskCaseOwner(event.target.value)} placeholder="Assign a person or team" required /></label>
+                  <label>TREATMENT PLAN<textarea value={riskCasePlan} onChange={event => setRiskCasePlan(event.target.value)} rows={6} placeholder="Define the actions to reduce this risk..." required /></label>
+                  <label>INITIAL ANALYST NOTES <span className="optional-label">OPTIONAL</span><textarea value={riskCaseNotes} onChange={event => setRiskCaseNotes(event.target.value)} rows={3} placeholder="Add context, investigation notes, or decisions..." /></label>
+                </div>
+                {riskCaseCreateError && <div className="risk-case-form-error"><AlertTriangle size={15}/>{riskCaseCreateError}</div>}
+                <div className="risk-case-modal-actions">
+                  <button className="text-button" type="button" onClick={() => setRiskCaseDraft(null)}>Cancel</button>
+                  <button className="subtle-button primary-risk-action" type="button" onClick={() => void createRiskCase()} disabled={!riskCaseOwner.trim() || !riskCasePlan.trim() || creatingRiskCaseFor === riskCaseDraft.asset_id}>
+                    {creatingRiskCaseFor === riskCaseDraft.asset_id ? "Saving case..." : "Create case"}
+                  </button>
+                </div>
+              </section>
+            </div>
           )}
           <footer><span>© 2026 NEXUS SECURITY SYSTEMS <b>·</b> PLATFORM v0.1.0</span><span className="api-indicator"><i className={apiState === "Connected" ? "online" : ""}/>{apiState === "Connected" ? "API CONNECTED" : apiState.toUpperCase()}</span><span>BUILT FOR DEFENSE <LockKeyhole size={12}/></span></footer>
         </div>
