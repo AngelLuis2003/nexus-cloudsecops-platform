@@ -645,7 +645,17 @@ function App() {
                             <details className="correlated-risk-details">
                               <summary>View treatment plan and activity history</summary>
                               <div className="correlated-risk-detail-grid">
-                                <div><b>Treatment plan</b><p>{item.treatment_plan || "No treatment plan recorded."}</p><b>Analyst notes</b><p>{item.analyst_notes || "No analyst notes recorded."}</p></div>
+                                <div className="risk-case-editable-details"><b>Treatment plan</b><textarea
+                                      key={item.id + "-plan-" + item.updated_at}
+                                      defaultValue={item.treatment_plan}
+                                      rows={4}
+                                      aria-label="Risk treatment plan"
+                                      placeholder="Describe the actions required to reduce this risk..."
+                                      onBlur={event => {
+                                        const treatment_plan = event.currentTarget.value.trim();
+                                        if (treatment_plan !== item.treatment_plan) void updateRiskCase(item.id, { treatment_plan });
+                                      }}
+                                    /><b>Analyst notes</b><p>{item.analyst_notes || "No analyst notes recorded."}</p></div>
                                 <div><b>Activity history</b><ul>{item.activity.map((event, index) => <li key={event.event + index}><strong>{event.event}</strong> — {event.details}<small>{new Date(event.timestamp).toLocaleString()}</small></li>)}</ul></div>
                               </div>
                             </details>
