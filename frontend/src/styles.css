@@ -414,3 +414,35 @@ body{zoom:1.12}
 .risk-case-modal-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 22px; padding-top: 17px; border-top: 1px solid #24364a; }
 .primary-risk-action { border-color: #177e99 !important; background: linear-gradient(135deg, #087b98, #12617e) !important; color: #f3fbff !important; }
 @media (max-width: 640px) { .risk-case-modal { padding: 18px; } .risk-case-context { grid-template-columns: 1fr; } .risk-case-modal-backdrop { padding: 10px; } }
+
+
+/* NEXUS Risk Governance — integrated status evidence workspace */
+.risk-evidence-workspace{position:relative;display:grid;gap:17px;margin:17px 0 5px;padding:19px 20px 15px;border:1px solid #263f57;border-radius:9px;background:linear-gradient(125deg,#101f30 0%,#0b1726 58%,#0d1b2b 100%);box-shadow:inset 0 1px 0 #ffffff08,0 10px 28px #0002;overflow:hidden}
+.risk-evidence-workspace:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#1689a5,#31c7df 48%,#1689a533)}
+.risk-evidence-heading{display:flex;align-items:flex-start;gap:12px}
+.risk-evidence-icon{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border:1px solid #236078;border-radius:8px;background:#102b3a;color:#55d5e8}
+.risk-evidence-heading-copy{min-width:0;flex:1}
+.risk-evidence-kicker{display:flex;align-items:center;gap:7px;color:#62c9dc;font:9px 'DM Mono',monospace;letter-spacing:1.15px}
+.risk-evidence-kicker i{width:3px;height:3px;border-radius:50%;background:#4e8298}
+.risk-evidence-heading h4{margin:5px 0 4px;color:#edf5fc;font:600 16px 'Space Grotesk',sans-serif;letter-spacing:-.2px}
+.risk-evidence-heading p{margin:0;color:#91a5ba;font:11px/1.55 'DM Sans',sans-serif}
+.risk-evidence-required{flex-shrink:0;padding:5px 7px;border:1px solid #6b5836;border-radius:4px;background:#292316;color:#e9c27e;font:8px 'DM Mono',monospace;letter-spacing:.8px}
+.risk-evidence-field{display:grid;gap:8px;padding:13px;border:1px solid #223b52;border-radius:7px;background:#0a1522}
+.risk-evidence-field label{color:#9db2c7;font:9px 'DM Mono',monospace;letter-spacing:.9px}
+.risk-evidence-field textarea{display:block;width:100%;min-height:88px;resize:vertical;box-sizing:border-box;padding:11px 12px;border:1px solid #2a435b;border-radius:5px;background:#0e1c2b;color:#e5f0fa;font:12px/1.6 'DM Sans',sans-serif;outline:none;transition:border-color .18s,box-shadow .18s}
+.risk-evidence-field textarea:hover{border-color:#365a73}
+.risk-evidence-field textarea:focus{border-color:#269bb5;box-shadow:0 0 0 3px #21c7e812}
+.risk-evidence-field textarea::placeholder{color:#647b91}
+.risk-evidence-field-meta{display:flex;justify-content:space-between;gap:12px;color:#71869c;font:9px 'DM Mono',monospace}
+.risk-evidence-field-meta b{color:#d7a85e;font-weight:500;white-space:nowrap}
+.risk-evidence-field-meta b.is-valid{color:#58d5ac}
+.risk-evidence-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid #20344a}
+.risk-evidence-footer>span{display:flex;align-items:center;gap:6px;color:#748ba2;font:9px 'DM Mono',monospace}
+.risk-evidence-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.risk-evidence-confirm{display:inline-flex;align-items:center;gap:7px}
+.risk-evidence-confirm:disabled{opacity:.4;cursor:not-allowed}
+.risk-evidence-warning{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid #6b5432;border-radius:6px;background:#211d17;color:#e9bd72}
+.risk-evidence-warning>svg{flex-shrink:0}
+.risk-evidence-warning span{display:grid;gap:3px;font-size:11px;line-height:1.45}
+.risk-evidence-warning b{font-size:11px;color:#f2d39b}
+@media(max-width:640px){.risk-evidence-workspace{padding:15px 13px}.risk-evidence-heading{gap:9px}.risk-evidence-required{font-size:7px}.risk-evidence-footer{align-items:flex-start;flex-direction:column}.risk-evidence-actions{width:100%;justify-content:flex-end}.risk-evidence-actions button{font-size:10px}.risk-evidence-field-meta{font-size:8px}}
