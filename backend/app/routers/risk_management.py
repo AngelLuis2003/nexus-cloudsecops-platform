@@ -19,6 +19,7 @@ class RiskCaseCreate(BaseModel):
     asset_id: str = Field(min_length=3, max_length=80)
     owner: str = Field(default="Unassigned", min_length=2, max_length=80)
     treatment_plan: str = Field(default="", max_length=2000)
+    analyst_notes: str = Field(default="", max_length=2000)
 
 
 class RiskCaseUpdate(BaseModel):
@@ -112,7 +113,7 @@ def create_risk_case(payload: RiskCaseCreate, db: Session = Depends(get_db)) -> 
         status="Open",
         owner=payload.owner,
         treatment_plan=payload.treatment_plan,
-        analyst_notes="",
+        analyst_notes=payload.analyst_notes,
         activity=[{
             "event": "Case created",
             "details": f"Created from current asset risk score {snapshot['risk_score']}/100.",
