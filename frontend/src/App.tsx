@@ -310,7 +310,7 @@ function App() {
       setCreatingRiskCaseFor("");
     }
   };
-  const updateRiskCase = async (id: string, updates: Partial<Pick<RiskCase, "status" | "owner" | "treatment_plan" | "analyst_notes">>) => {
+  const updateRiskCase = async (id: string, updates: Partial<Pick<RiskCase, "status" | "owner" | "treatment_plan" | "analyst_notes">> & { reason?: string }) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
     setRiskCaseUpdateError("");
     try {
@@ -319,7 +319,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates)
       });
-      if (!response.ok) throw new Error(`Risk case update failed (${response.status})`);
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.detail || `Risk case update failed (${response.status})`); }
       const updated: RiskCase = await response.json();
       setRiskCases(current => current.map(item => item.id === id ? updated : item));
     } catch (error) {
@@ -721,7 +721,24 @@ function App() {
                                 <select
                                   id={`risk-status-${item.id}`}
                                   value={item.status}
-                                  onChange={event => updateRiskCase(item.id, { status: event.target.value as RiskCase["status"] })}
+                                  onChange={event => {
+                                    const status = event.target.value as RiskCase["status"];
+                                    if (["Mitigated", "Accepted", "Closed"].includes(status)) {
+                                      const prompts: Record<string, string> = {
+                                        Mitigated: "Describe the evidence that confirms the risk has been mitigated (minimum 10 characters):",
+                                        Accepted: "Document who accepted this risk and why (minimum 10 characters):",
+                                        Closed: "Provide the justification for closing this case (minimum 10 characters):"
+                                      };
+                                      const reason = window.prompt(prompts[status]);
+                                      if (!reason || reason.trim().length < 10) {
+                                        setRiskCaseUpdateError("Transition cancelled. A justification of at least 10 characters is required.");
+                                        return;
+                                      }
+                                      void updateRiskCase(item.id, { status, reason: reason.trim() });
+                                      return;
+                                    }
+                                    void updateRiskCase(item.id, { status });
+                                  }}
                                 >
                                   <option>Open</option>
                                   <option>In Progress</option>
