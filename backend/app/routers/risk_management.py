@@ -83,7 +83,16 @@ def list_risk_cases(db: Session = Depends(get_db)) -> list[RiskCase]:
 
 @router.post("", response_model=RiskCase, status_code=201)
 def create_risk_case(payload: RiskCaseCreate, db: Session = Depends(get_db)) -> RiskCase:
-    """Create a treatment case from the asset's latest correlated risk snapshot."""
+    """Create one treatment case per asset from its latest correlated risk snapshot."""
+    existing = db.scalars(
+        select(StoredRecord).where(StoredRecord.module == "risk_cases")
+    ).all()
+    if any(str(row.payload.get("asset_id")) == payload.asset_id for row in existing):
+        raise HTTPException(
+            status_code=409,
+            detail="A risk treatment case already exists for this asset",
+        )
+
     snapshot = _load_risk_snapshot(db, payload.asset_id)
     now = datetime.now(timezone.utc)
     case_id = f"NX-RISK-{uuid4().hex[:8].upper()}"
