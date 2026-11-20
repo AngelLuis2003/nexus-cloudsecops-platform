@@ -43,6 +43,23 @@ type CorrelatedRisk = {
   recommended_actions: string[];
 };
 
+
+
+type RiskCase = {
+  id: string;
+  asset_id: string;
+  asset_name: string;
+  title: string;
+  risk_score: number;
+  risk_level: string;
+  status: "Open" | "In Progress" | "Mitigated" | "Accepted" | "Closed";
+  owner: string;
+  treatment_plan: string;
+  analyst_notes: string;
+  activity: { event: string; details: string; timestamp: string }[];
+  updated_at: string;
+};
+
 type RiskEngineResponse = {
   status: string;
   engine: string;
@@ -82,6 +99,8 @@ function App() {
   const [riskError, setRiskError] = useState("");
   const [riskRefresh, setRiskRefresh] = useState(0);
   const [correlatedRisks, setCorrelatedRisks] = useState<RiskEngineResponse | null>(null);
+  const [riskCases, setRiskCases] = useState<RiskCase[]>([]);
+  const [riskCaseUpdateError, setRiskCaseUpdateError] = useState("");
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState("");
   const [incidentSearch, setIncidentSearch] = useState("");
@@ -204,8 +223,9 @@ function App() {
       fetch(apiBaseUrl + "/api/v1/threats").then(r => { if (!r.ok) throw new Error("Threat detection data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/incidents").then(r => { if (!r.ok) throw new Error("Incident response data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/compliance").then(r => { if (!r.ok) throw new Error("Compliance assessment unavailable"); return r.json(); }),
-      fetch(apiBaseUrl + "/api/v1/risks").then(r => { if (!r.ok) throw new Error("Risk correlation engine unavailable"); return r.json(); })
-    ]).then(([assetResult, vulnerabilityResult, threatResult, incidentResult, complianceResult, riskEngineResult]) => {
+      fetch(apiBaseUrl + "/api/v1/risks").then(r => { if (!r.ok) throw new Error("Risk correlation engine unavailable"); return r.json(); }),
+      fetch(apiBaseUrl + "/api/v1/risk-cases").then(r => { if (!r.ok) throw new Error("Risk case management unavailable"); return r.json(); })
+    ]).then(([assetResult, vulnerabilityResult, threatResult, incidentResult, complianceResult, riskEngineResult, riskCasesResult]) => {
       if (cancelled) return;
       const failures: string[] = [];
       if (assetResult.status === "fulfilled" && Array.isArray(assetResult.value)) setAssets(assetResult.value);
@@ -220,6 +240,8 @@ function App() {
       else failures.push("Compliance");
       if (riskEngineResult.status === "fulfilled" && Array.isArray(riskEngineResult.value?.risks)) setCorrelatedRisks(riskEngineResult.value as RiskEngineResponse);
       else failures.push("Risk correlation engine");
+      if (riskCasesResult.status === "fulfilled" && Array.isArray(riskCasesResult.value)) setRiskCases(riskCasesResult.value as RiskCase[]);
+      else failures.push("Risk cases");
       setRiskError(failures.length ? "Some data sources could not be refreshed: " + failures.join(", ") + ". Previously loaded values are preserved." : "");
     }).finally(() => { if (!cancelled) setRiskLoading(false); });
     return () => { cancelled = true; };
@@ -236,6 +258,23 @@ function App() {
       setCompliance(updated);
     } catch (error) {
       setComplianceError(error instanceof Error ? error.message : "Unable to update compliance control");
+    }
+  };
+
+  const updateRiskCase = async (id: string, updates: Partial<Pick<RiskCase, "status" | "owner" | "treatment_plan" | "analyst_notes">>) => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    setRiskCaseUpdateError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/risk-cases/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      if (!response.ok) throw new Error(`Risk case update failed (${response.status})`);
+      const updated: RiskCase = await response.json();
+      setRiskCases(current => current.map(item => item.id === id ? updated : item));
+    } catch (error) {
+      setRiskCaseUpdateError(error instanceof Error ? error.message : "Unable to update risk case");
     }
   };
 
@@ -543,6 +582,60 @@ function App() {
                     ) : (
                       <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Risk intelligence is not available</b><small>{riskError || "The risk engine has not returned data yet."}</small></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)}>Retry</button></div>
                     )}
+                  </section>
+                  <section className="panel inventory-panel risk-case-management-panel">
+                    <div className="panel-heading inventory-heading">
+                      <div><h3>Risk case management</h3><p>Persistent treatment cases retrieved from the NEXUS API</p></div>
+                      <span className="risk-engine-status"><i/> {riskCases.length} CASES</span>
+                    </div>
+                    {riskCaseUpdateError && <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Case update failed</b><small>{riskCaseUpdateError}</small></div></div>}
+                    {riskCases.length === 0 ? (
+                      <div className="inventory-state">No risk treatment cases have been created yet.</div>
+                    ) : (
+                      <div className="correlated-risk-list">
+                        {riskCases.map(item => (
+                          <article className="correlated-risk-item" key={item.id}>
+                            <div className="correlated-risk-main">
+                              <div className="correlated-risk-identity">
+                                <span className="asset-symbol"><FileCheck2 size={15}/></span>
+                                <div><b>{item.title}</b><small>{item.id} · {item.asset_id} · {item.asset_name}</small></div>
+                              </div>
+                              <div className="correlated-risk-score">
+                                <strong>{item.risk_score}<small>/100</small></strong>
+                                <span className={`severity ${item.risk_level.toLowerCase()}`}><i/>{item.risk_level}</span>
+                              </div>
+                            </div>
+                            <div className="correlated-risk-meta">
+                              <span>Owner: {item.owner}</span>
+                              <span>Updated: {new Date(item.updated_at).toLocaleString()}</span>
+                              <span>{item.activity.length} activity events</span>
+                            </div>
+                            <div className="risk-case-controls">
+                              <label htmlFor={`risk-status-${item.id}`}>CASE STATUS</label>
+                              <select
+                                id={`risk-status-${item.id}`}
+                                value={item.status}
+                                onChange={event => updateRiskCase(item.id, { status: event.target.value as RiskCase["status"] })}
+                              >
+                                <option>Open</option>
+                                <option>In Progress</option>
+                                <option>Mitigated</option>
+                                <option>Accepted</option>
+                                <option>Closed</option>
+                              </select>
+                            </div>
+                            <details className="correlated-risk-details">
+                              <summary>View treatment plan and activity history</summary>
+                              <div className="correlated-risk-detail-grid">
+                                <div><b>Treatment plan</b><p>{item.treatment_plan || "No treatment plan recorded."}</p><b>Analyst notes</b><p>{item.analyst_notes || "No analyst notes recorded."}</p></div>
+                                <div><b>Activity history</b><ul>{item.activity.map((event, index) => <li key={event.event + index}><strong>{event.event}</strong> — {event.details}<small>{new Date(event.timestamp).toLocaleString()}</small></li>)}</ul></div>
+                              </div>
+                            </details>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                    <div className="inventory-footnote"><span><i className="live-dot"/> LIVE API · POSTGRESQL CASE RECORDS</span><span>STATUS CHANGES ARE AUDITED</span></div>
                   </section>
                   <section className="panel inventory-panel executive-priority-panel">
                     <div className="panel-heading inventory-heading"><div><h3>Priority risk register</h3><p>Highest-severity open vulnerabilities and unresolved incidents</p></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)} disabled={riskLoading}><RefreshCw size={14} className={riskLoading ? "spin" : ""}/> Refresh risk data</button></div>
