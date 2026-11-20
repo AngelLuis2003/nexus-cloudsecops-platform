@@ -101,6 +101,7 @@ function App() {
   const [correlatedRisks, setCorrelatedRisks] = useState<RiskEngineResponse | null>(null);
   const [riskCases, setRiskCases] = useState<RiskCase[]>([]);
   const [riskCaseUpdateError, setRiskCaseUpdateError] = useState("");
+  const [riskCaseTransition, setRiskCaseTransition] = useState<{ id: string; status: RiskCase["status"]; reason: string } | null>(null);
   const [riskCaseSearch, setRiskCaseSearch] = useState("");
   const [riskAssetSearch, setRiskAssetSearch] = useState("");
   const [riskCaseCreateError, setRiskCaseCreateError] = useState("");
@@ -667,7 +668,47 @@ function App() {
                                   </button>
                                 )}
                               </div>
-                              <details className="correlated-risk-details">
+                              {riskCaseTransition?.id === item.id && (
+                              <div className="risk-case-justification">
+                                <div>
+                                  <b>{riskCaseTransition.status} justification required</b>
+                                  <p>{riskCaseTransition.status === "Mitigated"
+                                    ? "Describe the evidence confirming that remediation was completed and verified."
+                                    : riskCaseTransition.status === "Accepted"
+                                      ? "Document who authorized the risk acceptance, why it is being accepted, and any conditions."
+                                      : "Explain why this case is being closed. The case must already be Mitigated or Accepted."}</p>
+                                </div>
+                                {riskCaseTransition.status === "Closed" && !["Mitigated", "Accepted"].includes(item.status) ? (
+                                  <div className="risk-case-justification-warning">This case must first be Mitigated or Accepted before it can be closed.</div>
+                                ) : (
+                                  <>
+                                    <textarea
+                                      rows={3}
+                                      value={riskCaseTransition.reason}
+                                      onChange={event => setRiskCaseTransition(current => current ? { ...current, reason: event.target.value } : current)}
+                                      placeholder="Enter a justification (at least 10 characters)..."
+                                      aria-label={riskCaseTransition.status + " justification"}
+                                    />
+                                    <small>{riskCaseTransition.reason.trim().length}/10 minimum characters</small>
+                                  </>
+                                )}
+                                <div className="risk-case-justification-actions">
+                                  <button className="subtle-button" onClick={() => setRiskCaseTransition(null)}>Cancel</button>
+                                  {!(riskCaseTransition.status === "Closed" && !["Mitigated", "Accepted"].includes(item.status)) && (
+                                    <button
+                                      className="primary-button"
+                                      disabled={riskCaseTransition.reason.trim().length < 10}
+                                      onClick={() => {
+                                        const { status: nextStatus, reason } = riskCaseTransition;
+                                        void updateRiskCase(item.id, { status: nextStatus, reason: reason.trim() });
+                                        setRiskCaseTransition(null);
+                                      }}
+                                    >Confirm status change</button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            <details className="correlated-risk-details">
                                 <summary>View risk factors and recommended actions</summary>
                                 <div className="correlated-risk-detail-grid">
                                   <div><b>Contributing factors</b>{item.factors.map((factor, index) => <p key={factor.factor + index}><span>{factor.factor} <strong>+{factor.points}</strong></span><small>{factor.description}</small></p>)}</div>
@@ -724,19 +765,11 @@ function App() {
                                   onChange={event => {
                                     const status = event.target.value as RiskCase["status"];
                                     if (["Mitigated", "Accepted", "Closed"].includes(status)) {
-                                      const prompts: Record<string, string> = {
-                                        Mitigated: "Describe the evidence that confirms the risk has been mitigated (minimum 10 characters):",
-                                        Accepted: "Document who accepted this risk and why (minimum 10 characters):",
-                                        Closed: "Provide the justification for closing this case (minimum 10 characters):"
-                                      };
-                                      const reason = window.prompt(prompts[status]);
-                                      if (!reason || reason.trim().length < 10) {
-                                        setRiskCaseUpdateError("Transition cancelled. A justification of at least 10 characters is required.");
-                                        return;
-                                      }
-                                      void updateRiskCase(item.id, { status, reason: reason.trim() });
+                                      setRiskCaseUpdateError("");
+                                      setRiskCaseTransition({ id: item.id, status, reason: "" });
                                       return;
                                     }
+                                    setRiskCaseTransition(null);
                                     void updateRiskCase(item.id, { status });
                                   }}
                                 >
