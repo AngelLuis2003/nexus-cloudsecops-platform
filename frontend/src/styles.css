@@ -350,3 +350,31 @@ body{zoom:1.12}
 .risk-case-controls .risk-case-control input::placeholder {
   color: #657990;
 }
+
+
+/* Editable risk treatment plan */
+.risk-case-editable-details textarea {
+  display: block;
+  width: 100%;
+  min-height: 104px;
+  margin: 9px 0 18px;
+  padding: 11px 12px;
+  resize: vertical;
+  border: 1px solid #293b51;
+  border-radius: 5px;
+  background: #0b1523;
+  color: #dce8f5;
+  font: 12px/1.6 'DM Sans', sans-serif;
+  outline: none;
+  box-shadow: inset 0 1px 2px #0003;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.risk-case-editable-details textarea:hover,
+.risk-case-editable-details textarea:focus {
+  border-color: #258da7;
+  background: #0d1928;
+}
+.risk-case-editable-details textarea:focus {
+  box-shadow: 0 0 0 3px #21c7e812;
+}
+.risk-case-editable-details textarea::placeholder { color: #657990; }
