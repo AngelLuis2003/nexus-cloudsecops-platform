@@ -28,6 +28,32 @@ type Overview = {
   threat_level: string;
 };
 
+type CorrelatedRisk = {
+  asset_id: string;
+  asset_name: string;
+  resource_type: string;
+  environment: string;
+  criticality: string;
+  public_exposure: boolean;
+  risk_score: number;
+  risk_level: string;
+  vulnerability_count: number;
+  threat_count: number;
+  factors: { factor: string; points: number; description: string }[];
+  recommended_actions: string[];
+};
+
+type RiskEngineResponse = {
+  status: string;
+  engine: string;
+  generated_at: string;
+  total_assets_analyzed: number;
+  total_active_vulnerabilities: number;
+  total_active_threats: number;
+  risks: CorrelatedRisk[];
+  notice: string;
+};
+
 const nav = [
   { label: "Overview", icon: LayoutDashboard },
   { label: "Asset inventory", icon: Boxes },
@@ -55,6 +81,7 @@ function App() {
   const [riskLoading, setRiskLoading] = useState(false);
   const [riskError, setRiskError] = useState("");
   const [riskRefresh, setRiskRefresh] = useState(0);
+  const [correlatedRisks, setCorrelatedRisks] = useState<RiskEngineResponse | null>(null);
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState("");
   const [incidentSearch, setIncidentSearch] = useState("");
@@ -176,8 +203,9 @@ function App() {
       fetch(apiBaseUrl + "/api/v1/vulnerabilities").then(r => { if (!r.ok) throw new Error("Vulnerability data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/threats").then(r => { if (!r.ok) throw new Error("Threat detection data unavailable"); return r.json(); }),
       fetch(apiBaseUrl + "/api/v1/incidents").then(r => { if (!r.ok) throw new Error("Incident response data unavailable"); return r.json(); }),
-      fetch(apiBaseUrl + "/api/v1/compliance").then(r => { if (!r.ok) throw new Error("Compliance assessment unavailable"); return r.json(); })
-    ]).then(([assetResult, vulnerabilityResult, threatResult, incidentResult, complianceResult]) => {
+      fetch(apiBaseUrl + "/api/v1/compliance").then(r => { if (!r.ok) throw new Error("Compliance assessment unavailable"); return r.json(); }),
+      fetch(apiBaseUrl + "/api/v1/risks").then(r => { if (!r.ok) throw new Error("Risk correlation engine unavailable"); return r.json(); })
+    ]).then(([assetResult, vulnerabilityResult, threatResult, incidentResult, complianceResult, riskEngineResult]) => {
       if (cancelled) return;
       const failures: string[] = [];
       if (assetResult.status === "fulfilled" && Array.isArray(assetResult.value)) setAssets(assetResult.value);
@@ -190,6 +218,8 @@ function App() {
       else failures.push("Incidents");
       if (complianceResult.status === "fulfilled" && Array.isArray(complianceResult.value?.controls)) setCompliance(complianceResult.value);
       else failures.push("Compliance");
+      if (riskEngineResult.status === "fulfilled" && Array.isArray(riskEngineResult.value?.risks)) setCorrelatedRisks(riskEngineResult.value as RiskEngineResponse);
+      else failures.push("Risk correlation engine");
       setRiskError(failures.length ? "Some data sources could not be refreshed: " + failures.join(", ") + ". Previously loaded values are preserved." : "");
     }).finally(() => { if (!cancelled) setRiskLoading(false); });
     return () => { cancelled = true; };
@@ -463,6 +493,56 @@ function App() {
                       <div className="incident-status-list">{(["Open","Investigating","Contained","Resolved"] as const).map(status => <div key={status}><span>{status}</span><b>{incidents.filter(i => i.status.toLowerCase() === status.toLowerCase()).length}</b></div>)}</div>
                       <button className="text-button" onClick={() => setActive("Incident response")}>Open incident queue <ArrowUpRight size={14}/></button>
                     </article>
+                  </section>
+                  <section className="panel inventory-panel correlated-risk-panel">
+                    <div className="panel-heading inventory-heading">
+                      <div><h3>Asset risk intelligence</h3><p>Correlated risk scores calculated by the NEXUS Risk Correlation Engine</p></div>
+                      <span className="risk-engine-status"><i/> ENGINE ACTIVE</span>
+                    </div>
+                    {correlatedRisks ? (
+                      <>
+                        <div className="correlated-risk-summary">
+                          <div><strong>{correlatedRisks.total_assets_analyzed}</strong><span>ASSETS ANALYZED</span></div>
+                          <div><strong>{correlatedRisks.total_active_vulnerabilities}</strong><span>ACTIVE VULNERABILITIES</span></div>
+                          <div><strong>{correlatedRisks.total_active_threats}</strong><span>ACTIVE THREATS</span></div>
+                          <div><strong>{correlatedRisks.risks.filter(item => item.risk_level.toLowerCase() === "critical" || item.risk_level.toLowerCase() === "high").length}</strong><span>HIGH / CRITICAL RISKS</span></div>
+                        </div>
+                        <div className="correlated-risk-list">
+                          {correlatedRisks.risks.map(item => (
+                            <article className="correlated-risk-item" key={item.asset_id}>
+                              <div className="correlated-risk-main">
+                                <div className="correlated-risk-identity">
+                                  <span className="asset-symbol"><ShieldAlert size={15}/></span>
+                                  <div><b>{item.asset_name}</b><small>{item.asset_id} · {item.resource_type} · {item.environment}</small></div>
+                                </div>
+                                <div className="correlated-risk-score">
+                                  <strong>{item.risk_score}<small>/100</small></strong>
+                                  <span className={`severity ${item.risk_level.toLowerCase()}`}><i/>{item.risk_level}</span>
+                                </div>
+                              </div>
+                              <div className="correlated-risk-meter"><i className={item.risk_level.toLowerCase()} style={{ width: Math.max(0, Math.min(100, item.risk_score)) + "%" }}/></div>
+                              <div className="correlated-risk-meta">
+                                <span>{item.criticality} criticality</span>
+                                <span>{item.public_exposure ? "Publicly exposed" : "Not publicly exposed"}</span>
+                                <span>{item.vulnerability_count} vulnerabilities</span>
+                                <span>{item.threat_count} threats</span>
+                              </div>
+                              <details className="correlated-risk-details">
+                                <summary>View risk factors and recommended actions</summary>
+                                <div className="correlated-risk-detail-grid">
+                                  <div><b>Contributing factors</b>{item.factors.map((factor, index) => <p key={factor.factor + index}><span>{factor.factor} <strong>+{factor.points}</strong></span><small>{factor.description}</small></p>)}</div>
+                                  <div><b>Recommended actions</b><ul>{item.recommended_actions.map((action, index) => <li key={index}>{action}</li>)}</ul></div>
+                                </div>
+                              </details>
+                            </article>
+                          ))}
+                        </div>
+                        <div className="correlated-risk-notice">{correlatedRisks.notice}</div>
+                        <div className="inventory-footnote"><span><i className="live-dot"/> LIVE API · RISK CORRELATION ENGINE</span><span>CALCULATED {new Date(correlatedRisks.generated_at).toLocaleString()}</span></div>
+                      </>
+                    ) : (
+                      <div className="inventory-state error-state"><AlertTriangle size={18}/><div><b>Risk intelligence is not available</b><small>{riskError || "The risk engine has not returned data yet."}</small></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)}>Retry</button></div>
+                    )}
                   </section>
                   <section className="panel inventory-panel executive-priority-panel">
                     <div className="panel-heading inventory-heading"><div><h3>Priority risk register</h3><p>Highest-severity open vulnerabilities and unresolved incidents</p></div><button className="subtle-button" onClick={() => setRiskRefresh(v => v + 1)} disabled={riskLoading}><RefreshCw size={14} className={riskLoading ? "spin" : ""}/> Refresh risk data</button></div>
